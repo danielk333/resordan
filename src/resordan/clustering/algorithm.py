@@ -3,6 +3,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..data.events import EventDataset, EventsDataset
+from ..data.gmf import GMFDataset
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,26 +35,17 @@ class DetectorConfig:
     min_n_samples: int = 5
 
 
-@dataclass
-class _DetectorResult:
-    coef_loss: float = np.nan
-    coef_loss_range_rate: float = np.nan
-    coef_loss_acceleration: float = np.nan
-    detected: bool = False
-
-
 def _detect_in_window(
     t: np.ndarray,
     r: np.ndarray,
     v: np.ndarray,
     a: np.ndarray,
     cfg: DetectorConfig,
-) -> _DetectorResult:
+) -> bool:
     """Run detection for a window of data."""
-    result = _DetectorResult()
     if t.size < cfg.min_n_samples:
         logger.warning(f"Not enough samples for polynomial fit ({t.size}).")
-        return result
+        return False
 
     # TODO: Check shapes
 
@@ -76,24 +70,12 @@ def _detect_in_window(
         f"acceleration={coef_loss_acceleration}, "
         f"weighted_total={coef_loss}."
     )
-
-    # Set result fields
-    result.coef_loss_range_rate = coef_loss_range_rate
-    result.coef_loss_acceleration = coef_loss_acceleration
-    result.coef_loss = coef_loss
-    # Threshold loss
-    result.detected = coef_loss < cfg.loss_threshold
-
-    return result
+    # Threshold loss (determine if this is a detected object)
+    detected = coef_loss < cfg.loss_threshold
+    return detected
 
 
-def _prepare_data(data, cfg):
-    # TODO: Update based on data format
-    keys = ["t", "range_peak", "range_rate_peak", "acceleration_peak", "snr"]
-    return [data.get(k) for k in keys]
-
-
-def snr_peaks_detection(data, **kwargs):
+def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
     """Run clustering by detecting SNR peaks.
 
     Parameters
@@ -105,18 +87,15 @@ def snr_peaks_detection(data, **kwargs):
 
     Returns
     -------
-        Nested list of event indices.
+        EventsDataset representing detected objects.
     """
-    logger.info(f"Running detection. Number of timesteps = {data['t'].size}.")
+    logger.info(f"Running detection. Number of timesteps = {gmf_dataset.t.size}.")
 
     cfg = DetectorConfig(**kwargs)
     logger.info(f"Detector config: {cfg}.")
 
-    # Load data
-    t, r, v, a, snr = _prepare_data(data, cfg)
-
     # Threshold SNR to get detection candidates
-    inds = np.where(snr > cfg.snr_db_threshold)[0]
+    inds = np.where(gmf_dataset.snr > cfg.snr_db_threshold)[0]
 
     if inds.size < 4:
         logger.warning("No detections found.")
@@ -125,19 +104,34 @@ def snr_peaks_detection(data, **kwargs):
         logger.info(f"Found {inds.size} timesteps with SNR > {cfg.snr_db_threshold} dB.")
 
     # Split detection candidates into windows
-    times = t[inds]
+    times = gmf_dataset.t[inds]
     time_deltas = times[1:] - times[:-1]
     window_starts = np.where(time_deltas > cfg.segment_split_time)[0] + 1
     windows = np.split(inds, window_starts)
 
     # Run detection in each window
-    detected_inds = []
+    events = []
+    event_number = 0
     for window_inds in windows:
-        result = _detect_in_window(
-            t[window_inds], r[window_inds], v[window_inds], a[window_inds], cfg
-        )
-        if result.detected:
-            detected_inds.append(window_inds)
+        t = gmf_dataset.t[window_inds]
+        r = gmf_dataset.range_peak[window_inds]
+        v = gmf_dataset.range_rate_peak[window_inds]
+        a = gmf_dataset.acceleration_peak[window_inds]
 
-    logger.info(f"Detected {len(detected_inds)} targets.")
-    return detected_inds
+        detected = _detect_in_window(t, r, v, a, cfg)
+        if detected:
+            event = EventDataset(
+                event_number=event_number,
+                event_duration=t.max() - t.min(),
+                idx=window_inds,
+                t=t,
+                range=r,
+                range_rate=v,
+                acceleration=a,
+                snr=gmf_dataset.snr[window_inds],
+            )
+            events.append(event)
+            event_number += 1
+
+    logger.info(f"Detected {len(events)} targets.")
+    return EventsDataset(meta=gmf_dataset.meta, events=events)

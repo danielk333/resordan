@@ -1,10 +1,64 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
+from typing import Any, Optional
 
 import h5py
 import numpy as np
 
+from .base import BaseDataset, dataset
+
 logger = logging.getLogger(__name__)
+
+
+################################################################################
+# GMF Dataset definitions
+################################################################################
+
+
+@dataset
+class GMFMetadata(BaseDataset):
+    ranges: np.ndarray
+    range_rates: np.ndarray
+    accelerations: np.ndarray
+    range_gates: np.ndarray
+    processing: dict[str, Any]
+    experiment: dict[str, Any]
+
+
+@dataset
+class GMFDataset(BaseDataset):
+    meta: GMFMetadata
+    gmf: Optional[np.ndarray] = None
+    gmf_optimized_peak: Optional[np.ndarray] = None
+    gmf_zero_frequency: Optional[np.ndarray] = None
+    range_rate_index: Optional[np.ndarray] = None
+    acceleration_index: Optional[np.ndarray] = None
+    nf_vec: Optional[np.ndarray] = None
+    nf_range: Optional[np.ndarray] = None
+    range_peak: Optional[np.ndarray] = None
+    range_rate_peak: Optional[np.ndarray] = None
+    acceleration_peak: Optional[np.ndarray] = None
+    gmf_optimized: Optional[np.ndarray] = None
+    gmf_peak: Optional[np.ndarray] = None
+    tx_power: Optional[np.ndarray] = None
+    t: Optional[np.ndarray] = None
+    snr: Optional[np.ndarray] = None
+
+    @classmethod
+    def from_files(cls, *args, **kwargs) -> GMFDataset:
+        """Create dataset from a list of files. See `load_gmf` for description and parameters."""
+        data, meta = load_gmf(*args, **kwargs)
+        meta_dataset = GMFMetadata(**meta)
+        dataset = cls(meta=meta_dataset, **data)
+        return dataset
+
+
+################################################################################
+# Loaders for GMF data
+################################################################################
+
 
 DEFAULT_MATS = {
     "gmf",
