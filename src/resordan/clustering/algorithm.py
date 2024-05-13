@@ -75,6 +75,25 @@ def _detect_in_window(
     return detected
 
 
+def _create_event_dataset_for_detection(gmf_dataset, idx, event_number):
+    t = gmf_dataset.t[idx]
+    epoch = t[0]
+    t -= epoch
+    event = EventDataset(
+        event_number=event_number,
+        event_duration=t.max() - t.min(),
+        epoch=epoch,
+        t=t,
+        range=gmf_dataset.range_peak[idx],
+        range_rate=gmf_dataset.range_rate_peak[idx],
+        acceleration=gmf_dataset.acceleration_peak[idx],
+        snr=gmf_dataset.snr[idx],
+        tx_power=gmf_dataset.tx_power[idx],
+        idx=idx,
+    )
+    return event
+
+
 def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
     """Run clustering by detecting SNR peaks.
 
@@ -113,24 +132,17 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
     events = []
     event_number = 0
     for window_inds in windows:
-        t = gmf_dataset.t[window_inds]
-        r = gmf_dataset.range_peak[window_inds]
-        v = gmf_dataset.range_rate_peak[window_inds]
-        a = gmf_dataset.acceleration_peak[window_inds]
-
-        detected = _detect_in_window(t, r, v, a, cfg)
+        detected = _detect_in_window(
+            t=gmf_dataset.t[window_inds],
+            r=gmf_dataset.range_peak[window_inds],
+            v=gmf_dataset.range_rate_peak[window_inds],
+            a=gmf_dataset.acceleration_peak[window_inds],
+            cfg=cfg,
+        )
         if detected:
-            event = EventDataset(
-                event_number=event_number,
-                event_duration=t.max() - t.min(),
-                idx=window_inds,
-                t=t,
-                range=r,
-                range_rate=v,
-                acceleration=a,
-                snr=gmf_dataset.snr[window_inds],
+            events.append(
+                _create_event_dataset_for_detection(gmf_dataset, window_inds, event_number)
             )
-            events.append(event)
             event_number += 1
 
     logger.info(f"Detected {len(events)} targets.")

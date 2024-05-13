@@ -11,13 +11,20 @@ class EventDataset(BaseDataset):
     # Identification
     event_number: int
     target_id: Optional[int] = None
-    # Time-series
-    idx: np.ndarray
+    # Time series
+    epoch: float
     t: np.ndarray
     range: np.ndarray
     range_rate: np.ndarray
     acceleration: np.ndarray
     snr: np.ndarray
+    tx_power: np.ndarray
+    idx: np.ndarray
+    # Time series standard deviation
+    sd_range: Optional[np.ndarray] = None
+    sd_range_rate: Optional[np.ndarray] = None
+    sd_acceleration: Optional[np.ndarray] = None
+    sd_snr: Optional[np.ndarray] = None
     # Detection
     effective_diameter: Optional[float] = None
     rcs_lower_bound: Optional[float] = None
