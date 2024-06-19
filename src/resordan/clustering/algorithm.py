@@ -132,6 +132,11 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
     events = []
     event_number = 0
     for window_inds in windows:
+        # Ensure that window indices are linearly increasing.
+        # This ensures constant sampling period in the time series of the detected event.
+        window_inds = np.arange(window_inds[0], window_inds[-1] + 1)
+
+        # Run detection
         detected = _detect_in_window(
             t=gmf_dataset.t[window_inds],
             r=gmf_dataset.range_peak[window_inds],
