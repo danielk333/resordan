@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -36,4 +36,7 @@ class EventDataset(BaseDataset):
 class EventsDataset(BaseDataset):
     # Metadata
     meta: GMFMetadata
+    # Detector config
+    detector_config: dict[str, Any]
+    # Events
     events: list[EventDataset]

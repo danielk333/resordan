@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import numpy as np
 
@@ -146,4 +146,4 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
             event_number += 1
 
     logger.info(f"Detected {len(events)} targets.")
-    return EventsDataset(meta=gmf_dataset.meta, events=events)
+    return EventsDataset(meta=gmf_dataset.meta, detector_config=asdict(cfg), events=events)
