@@ -20,6 +20,7 @@ class EventDataset(BaseDataset):
     snr: np.ndarray
     tx_power: np.ndarray
     idx: np.ndarray
+    pointing: Optional[np.ndarray | float] = None
     # Time series standard deviation
     sd_range: Optional[np.ndarray] = None
     sd_range_rate: Optional[np.ndarray] = None

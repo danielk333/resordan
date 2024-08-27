@@ -75,21 +75,31 @@ def _detect_in_window(
     return detected
 
 
+def _slice_if_not_none_or_nan(arr, idx):
+    if arr is None:
+        return None
+    if np.isscalar(arr) and np.isnan(arr):
+        return np.nan
+    return arr[idx]
+
+
 def _create_event_dataset_for_detection(gmf_dataset, idx, event_number):
     t = gmf_dataset.t[idx]
     epoch = t[0]
     t -= epoch
+
     event = EventDataset(
         event_number=event_number,
         event_duration=t.max() - t.min(),
         epoch=epoch,
         t=t,
+        idx=idx,
         range=gmf_dataset.range_peak[idx],
         range_rate=gmf_dataset.range_rate_peak[idx],
         acceleration=gmf_dataset.acceleration_peak[idx],
         snr=gmf_dataset.snr[idx],
         tx_power=gmf_dataset.tx_power[idx],
-        idx=idx,
+        pointing=_slice_if_not_none_or_nan(gmf_dataset.pointing, idx),
     )
     return event
 
@@ -118,7 +128,7 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
 
     if inds.size < 4:
         logger.warning("No detections found.")
-        return []
+        return EventsDataset(meta=gmf_dataset.meta, detector_config=asdict(cfg), events=[])
     else:
         logger.info(f"Found {inds.size} timesteps with SNR > {cfg.snr_db_threshold} dB.")
 

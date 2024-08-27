@@ -45,6 +45,7 @@ class GMFDataset(BaseDataset):
     tx_power: Optional[np.ndarray] = None
     t: Optional[np.ndarray] = None
     snr: Optional[np.ndarray] = None
+    pointing: Optional[np.ndarray | float] = None
 
     @classmethod
     def from_files(cls, *args, **kwargs) -> GMFDataset:
@@ -67,6 +68,7 @@ DEFAULT_MATS = {
     "range_rate_index",
     "acceleration_index",
     "nf_vec",
+    "pointing",
 }
 DEFAULT_VECS = {
     "range_peak",
@@ -77,8 +79,15 @@ DEFAULT_VECS = {
     "tx_power",
     "t",
 }
-DERIVED = {"t", "nf_vec"}
-OPTIONAL = {"gmf_optimized_peak", "gmf_optimized"}
+DERIVED = {
+    "t",
+    "nf_vec",
+}
+OPTIONAL = {
+    "gmf_optimized_peak",
+    "gmf_optimized",
+    "pointing",
+}
 
 
 def _load_key_into_dict(hf, data, key):
