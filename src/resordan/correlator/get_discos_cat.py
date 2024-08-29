@@ -2,6 +2,7 @@ from pprint import pprint
 import requests
 import urllib3
 urllib3.disable_warnings()
+import time
 
 URL = 'https://discosweb.esoc.esa.int'
 token = 'ImQzNjIwZWNkLTFlNjItNDA1Ny04NGQwLTQ3MTMzNWFlYWVmOCI.5t73F9A7jZUH5X-BXQIlFHIC13Q'
@@ -12,11 +13,13 @@ def main(catid):
         headers={'Authorization': f'Bearer {token}','DiscosWeb-Api-Version': '2'},
         #params={'filter': f'eq(reentry.epoch,null)&eq(satno,{catid})', # some objected decayed at the time of this running
         params={'filter': f'eq(satno,{catid})',
-                'sort': 'satno','page[size]': 3,'page[number]':1},
+                'sort': 'satno','page[size]': 10,'page[number]':1},
                 verify=False)
     doc = response.json()
     doc = doc['data']
-
+    
+    time.sleep(5) 
+    
     for i in doc:
         nameo = i['attributes']['name']
         satno = i['attributes']['satno']

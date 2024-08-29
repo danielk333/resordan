@@ -1,4 +1,4 @@
-import glob, sys
+import glob, sys, os
 import logging
 import argparse
 import matplotlib.pyplot as plt
@@ -7,6 +7,7 @@ import cluster_plotting as plotting
 from resordan.clustering import algorithm as clustering
 from resordan.data.gmf import GMFDataset
 from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger("resordan")
 logging.basicConfig(level=logging.INFO)
@@ -25,30 +26,40 @@ def main(input_args=None):
     
     results = Parser.parse_args()
     gmf_dir = results.GMF
-    save_path = results.SF
+    save_dir = results.SF
     plot = results.P
+    pattern = '*.h5'
 
-    gmf_files = list(sorted(glob.glob(f"{gmf_dir}/*.h5")))
-    gmf_dataset = GMFDataset.from_files(gmf_files)
+    for root, dirs, files in os.walk(gmf_dir):
+        dirs.sort()
+        for dirname in dirs:
+            print(dirname)
+            dirsave = (dirname[0:13]).replace('-','')
+            filesave = 'ce_uhf_' + dirsave + '.pkl'
+            dirsasve = dirsave[0:8]
+            
+            gmf_files = list(sorted(glob.glob(os.path.join(root, dirname, pattern))))
+            gmf_dataset = GMFDataset.from_files(gmf_files)
 
-    detector_params = dict(
-        # loss_weights=(1e-3, 1e-3),
-        segment_split_time=1.5,
-        snr_db_threshold=20,
-        # loss_threshold=10,
-    )
-    events_dataset = clustering.snr_peaks_detection(gmf_dataset, **detector_params)
-    GMFDataset.to_pickle(events_dataset,save_path)
+            detector_params = dict(
+                # loss_weights=(1e-3, 1e-3),
+                segment_split_time=1.5,
+                snr_db_threshold=20,
+                # loss_threshold=10,
+            )
+            events_dataset = clustering.snr_peaks_detection(gmf_dataset, **detector_params)
+            Path(os.path.join(save_dir,dirsasve)).mkdir(parents=True, exist_ok=True)
+            GMFDataset.to_pickle(events_dataset,str(os.path.join(save_dir,dirsasve,filesave)))
 
-    if events_dataset.events:
-        if plot:
-            detected_inds = np.concatenate([e.idx for e in events_dataset.events])
-            fig, ax = plt.subplots(2, 2, figsize=(10, 10), sharex="all")
-            plotting.plot_peaks(axes=ax, data=gmf_dataset, detected_inds=detected_inds)
-            plt.show()
+            if events_dataset.events:
+                if plot:
+                    detected_inds = np.concatenate([e.idx for e in events_dataset.events])
+                    fig, ax = plt.subplots(2, 2, figsize=(10, 10), sharex="all")
+                    plotting.plot_peaks(axes=ax, data=gmf_dataset, detected_inds=detected_inds)
+                    plt.show()
 
-    else:
-        print("No detections found.")
-
+            else:
+                print("No detections found.")
+            
 if __name__ == '__main__':
     main()
