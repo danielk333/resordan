@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from astropy.time import Time, TimeDelta
 from tqdm import tqdm
-from datetime import datetime, UTC
+from datetime import datetime
 import h5py
 
 import sorts
@@ -318,7 +318,7 @@ def main_predict(args):
     
                 meas_id = measurnment_id[select_id][0]
                 obj_id = indecies[select_id][0]
-                ename = args.radar + '_' + datetime.fromtimestamp(eepoch, UTC).strftime('%Y%m%d_%H%M%S_%f')
+                ename = args.radar + '_' + datetime.utcfromtimestamp(eepoch).strftime('%Y%m%d_%H%M%S_%f')
 
                 obj = pop.get_object(obj_id)
                 norad = pop.data['oid'][obj_id]
