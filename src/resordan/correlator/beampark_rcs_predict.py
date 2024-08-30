@@ -277,7 +277,7 @@ def main_predict(args):
     path2corrdata = Path(args.correlation_data).resolve()
     tle_pth = Path(args.catalog).resolve()
         
-    corr_events = list(path2correvents.rglob('*.pkl'))
+    corr_events = list(sorted(path2correvents.rglob('*.pkl')))
     
     pop = sorts.population.tle_catalog(tle_pth, cartesian=False)
     pop.unique()
@@ -290,6 +290,8 @@ def main_predict(args):
 
     for corr_event in corr_events:
         corrdata_filename = corr_event.name.split('.')[0] + '.h5'
+        print(path2corrdata / corrdata_filename)
+        print(corr_event)
         with h5py.File(path2corrdata / corrdata_filename, 'r') as ds:
             indecies = ds['matched_object_index'][()][0, :]
             measurnment_id = ds['observation_index'][()]
@@ -387,7 +389,7 @@ def main_predict(args):
                         best_mae = float('NaN')
                     else:
                         best_mae = np.nanargmin(pmae)
-                    
+                    print(best_mae)
                     if np.isnan(best_mae):
                         pass
                     else:
@@ -427,7 +429,7 @@ def main_predict(args):
                         pyant.plotting.gain_heatmap(radar.tx[0].beam, min_elevation=85.0, ax=ax)
                         fig.savefig(results_folder / f'correlated_pass_pth_gain.{args.format}')
                         plt.close(fig)
-
+                        
                         fig, axes = plt.subplots(2, 2, figsize=(16, 8), sharex=True)
                         axes[0, 0].plot(data.t, diam*1e2)
                         axes[0, 0].set_ylabel('Diameter [cm]')
@@ -461,7 +463,7 @@ def main_predict(args):
                                         radar.tx[0].beam.pointing,
                                         degrees=True
                         )
-                        
+                        stop
                         SNR_sim, G_pth, diam, low_gain_inds, ecef_r, pth, rcs_data = pdatas[best_mae]
                             
                         nameo, satno, objectClass, mission, mass, shape, width, height, depth, diameter, span, xSectMax, xSectMin, xSectAvg = get_discos_cat.main(norad)
