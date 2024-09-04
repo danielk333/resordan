@@ -3,6 +3,7 @@ from pathlib import Path
 
 from resordan.clustering import algorithm as clustering
 from resordan.data.gmf import GMFDataset
+from resordan.data.events import EventDataset
 
 DETECTOR_PARAMS = dict(
     # loss_weights=(1e-3, 1e-3),
@@ -24,10 +25,11 @@ def main(input_args=None):
     # find gmf files
     gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
     gmf_dataset = GMFDataset.from_files(gmf_files)
+    # cluster
     events_dataset = clustering.snr_peaks_detection(gmf_dataset, **DETECTOR_PARAMS)
-
-    print(events_dataset.events)
-
+    # write detections
+    outfile = dst / f"{src.name}.pkl"
+    EventDataset.to_pickle(events_dataset, outfile)
 
 if __name__ == '__main__':
     main()
