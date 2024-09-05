@@ -1,6 +1,19 @@
-# Clustering algorithm
+# correlator algorithm
 
 This submodule implements the `snr_peaks_detection` function, which is designed to detect events (objects) in radar data using a clustering algorithm based on Signal-to-Noise Ratio (SNR) peaks. It uses polynomial fitting and a configurable loss function to analyze time series of range, range rate, and acceleration, to identify potential targets. The script splits the data into windows based on temporal gaps between SNR peaks, and evaluates each window to determine whether it contains a valid detection. The detected events are then stored in an `EventsDataset`.
+
+space_track_download
+
+correlator
+
+RCS_predict
+
+Update_tle
+
+get_discos_cat
+
+
+
 
 ## Brief overview of algorithm
 

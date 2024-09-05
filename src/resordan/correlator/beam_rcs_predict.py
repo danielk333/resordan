@@ -312,8 +312,8 @@ def main_predict(args):
                 t = ts[snridmax] # time at the max SNR
                 r = rs[snridmax] # in m, one way
                 v = vs[snridmax] # in m/s
-                az = 90.0 #event.az
-                ele = 75.0 #event.ele
+                az = events.pointing[0][0] # assuming that all values are the same
+                ele = events.pointing[0][1]
                 
                 select_id = np.where(time_id == t)
                 select_id = select_id[0]
@@ -348,7 +348,6 @@ def main_predict(args):
                     #new_pop = sorts.population.tle_catalog([(new_tle[0],new_tle[1])], cartesian=False)
                     #obj = new_pop.get_object(0)
                     ##==================
-                    
                     
                     obj.out_frame = 'ITRS'
 
@@ -463,7 +462,7 @@ def main_predict(args):
                                         radar.tx[0].beam.pointing,
                                         degrees=True
                         )
-                        stop
+                        
                         SNR_sim, G_pth, diam, low_gain_inds, ecef_r, pth, rcs_data = pdatas[best_mae]
                             
                         nameo, satno, objectClass, mission, mass, shape, width, height, depth, diameter, span, xSectMax, xSectMin, xSectAvg = get_discos_cat.main(norad)
