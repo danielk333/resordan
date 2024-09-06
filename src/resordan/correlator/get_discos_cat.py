@@ -3,9 +3,13 @@ import requests
 import urllib3
 urllib3.disable_warnings()
 import time
+import subprocess
 
 URL = 'https://discosweb.esoc.esa.int'
-token = 'ImQzNjIwZWNkLTFlNjItNDA1Ny04NGQwLTQ3MTMzNWFlYWVmOCI.5t73F9A7jZUH5X-BXQIlFHIC13Q'
+credentials = 'discos_credentials.txt'
+proc = subprocess.Popen("sed -n '1p' "+credentials, stdout=subprocess.PIPE, shell=True)
+token = proc.stdout.read()
+token = token.strip().decode( "utf-8" )
     
 # Options: owhd, osp, os1, os2, os3, rbd; o=object, w=width, h=height, d=depth, sp=sphere, s=starlink, 1=grupo1,etc, rbd=rocket bodies + debris
 def main(catid):
