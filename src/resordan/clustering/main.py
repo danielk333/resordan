@@ -15,7 +15,7 @@ DETECTOR_PARAMS = dict(
 def main(input_args=None):
     parser = argparse.ArgumentParser(description='Cluster GMF Data')
     parser.add_argument('src', type=str, help='Path to GMF directory')
-    parser.add_argument('dst', type=str, help='Path to output directory')
+    parser.add_argument('--dst', type=str, help='Path to output directory')
 
     args = parser.parse_args()
 
@@ -27,9 +27,13 @@ def main(input_args=None):
     gmf_dataset = GMFDataset.from_files(gmf_files)
     # cluster
     events_dataset = clustering.snr_peaks_detection(gmf_dataset, **DETECTOR_PARAMS)
+
+    print(events_dataset)
+
     # write detections
-    outfile = dst / f"{src.name}.pkl"
-    EventDataset.to_pickle(events_dataset, outfile)
+    if args.dst:
+        outfile = dst / f"{src.name}.pkl"
+        EventDataset.to_pickle(events_dataset, outfile)
 
 if __name__ == '__main__':
     main()
