@@ -20,7 +20,6 @@ def main(input_args=None):
     args = parser.parse_args()
 
     src = Path(args.src)
-    dst = Path(args.dst)
 
     # find gmf files
     gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
@@ -32,7 +31,7 @@ def main(input_args=None):
 
     # write detections
     if args.dst:
-        outfile = dst / f"{src.name}.pkl"
+        outfile = Path(dst) / f"{src.name}.pkl"
         EventDataset.to_pickle(events_dataset, outfile)
 
 if __name__ == '__main__':
