@@ -8,7 +8,6 @@ import scipy
 import similaritymeasures
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from astropy.time import Time, TimeDelta
@@ -19,8 +18,8 @@ import h5py
 import sorts
 import pyant
 import pyorb
-import update_tle as utle
-import get_discos_cat
+import resordan.correlator.update_tle as utle
+import resordan.correlator.get_discos_cat as get_discos_cat
 
 try:
     from mpi4py import MPI
