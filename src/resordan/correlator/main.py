@@ -5,7 +5,7 @@ import datetime as dt
 
 ISO_FMT = '%Y-%m-%dT%H:%M:%S'
 
-def download_tle(start_dt, end_dt, st_credentials, dst=None):
+def download_tle(start_dt, end_dt, st_credentials, out=None):
     """
     download TLE for time interval, store to folder dst if given
     """
@@ -19,16 +19,18 @@ def download_tle(start_dt, end_dt, st_credentials, dst=None):
         format='tle',
         publish_epoch=drange
     )
-    if not dst:
+    if not out:
         return lines
     else:
         start = dt.datetime.strftime(start_dt, ISO_FMT)
         end = dt.datetime.strftime(end_dt, ISO_FMT)
-        outfile = Path(dst) / f"{start}.{end}.tle"
-        # write to file
-        with open(outfile, 'w') as file:
-            for line in lines:
-                file.write(line + "\n")
+        if Path(out).exists():
+            print(f"TLE file already exists {out}")
+        else:
+            # write to file
+            with open(out, 'w') as file:
+                for line in lines:
+                    file.write(line + "\n")
 
 
 def main(input_args=None):
