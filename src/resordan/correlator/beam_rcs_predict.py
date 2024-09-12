@@ -6,6 +6,7 @@ import argparse
 import os
 import scipy
 import similaritymeasures
+import subprocess
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ import sorts
 import pyant
 import pyorb
 import resordan.correlator.update_tle as utle
-import resordan.correlator.get_discos_cat as get_discos_cat
+from resordan.correlator.get_discos_cat import get_discos_cat
 
 try:
     from mpi4py import MPI
@@ -260,7 +261,7 @@ def updated_tle(line1,line2,data,radar):
 
     return new_tle
 
-def main_predict(args):
+def main_predict(args, token):
     radar = getattr(sorts.radars, args.radar)
     
     t_jitter = np.arange(
@@ -464,7 +465,7 @@ def main_predict(args):
                         
                         SNR_sim, G_pth, diam, low_gain_inds, ecef_r, pth, rcs_data = pdatas[best_mae]
                             
-                        nameo, satno, objectClass, mission, mass, shape, width, height, depth, diameter, span, xSectMax, xSectMin, xSectAvg = get_discos_cat.main(norad)
+                        nameo, satno, objectClass, mission, mass, shape, width, height, depth, diameter, span, xSectMax, xSectMin, xSectAvg = get_discos_cat(norad, token)
                             
                         summary_data = dict(
                                 SNR_sim = SNR_sim,
@@ -553,12 +554,17 @@ def main(input_args=None):
         help='Plot format',
     )
 
+    credentials = 'discos_credentials.txt'
+    proc = subprocess.Popen("sed -n '1p' "+credentials, stdout=subprocess.PIPE, shell=True)
+    token = proc.stdout.read()
+    token = token.strip().decode( "utf-8" )
+
     if input_args is None:
         args = parser.parse_args()
     else:
         args = parser.parse_args(input_args)
 
-    main_predict(args)
+    main_predict(args, token)
 
 
 if __name__ == '__main__':

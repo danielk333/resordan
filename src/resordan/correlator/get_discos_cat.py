@@ -1,4 +1,3 @@
-from pprint import pprint
 import requests
 import urllib3
 urllib3.disable_warnings()
@@ -6,13 +5,15 @@ import time
 import subprocess
 
 URL = 'https://discosweb.esoc.esa.int'
-credentials = 'discos_credentials.txt'
-proc = subprocess.Popen("sed -n '1p' "+credentials, stdout=subprocess.PIPE, shell=True)
-token = proc.stdout.read()
-token = token.strip().decode( "utf-8" )
     
-# Options: owhd, osp, os1, os2, os3, rbd; o=object, w=width, h=height, d=depth, sp=sphere, s=starlink, 1=grupo1,etc, rbd=rocket bodies + debris
-def main(catid):
+
+def get_discos_cat(catid, token):
+    """
+    catid (?):
+        discos catalogue id
+    token (str):
+        access token from DISCOS
+    """
     response = requests.get(f'{URL}/api/objects',
         headers={'Authorization': f'Bearer {token}','DiscosWeb-Api-Version': '2'},
         #params={'filter': f'eq(reentry.epoch,null)&eq(satno,{catid})', # some objected decayed at the time of this running
@@ -42,6 +43,15 @@ def main(catid):
     
     return nameo, satno, objectClass, mission, mass, shape, width, height, depth, diameter, span, xSectMax, xSectMin, xSectAvg
 
+
+
+# Options: owhd, osp, os1, os2, os3, rbd; o=object, w=width, h=height, d=depth, sp=sphere, s=starlink, 1=grupo1,etc, rbd=rocket bodies + debris
+def main(catid):
+
+    return get_discos_cat(catid, token)
+
+
 if __name__ == '__main__':
+    # TODO - need catid
     main()
 

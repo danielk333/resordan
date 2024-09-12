@@ -11,6 +11,7 @@ def main():
     parser.add_argument('cfg', type=str, help='Path to snr2rcs config file')
     parser.add_argument('-o', '--output', type=str, help='Path to output file')
     parser.add_argument('-v', "--verbose", action='store_true', help='Print results to screen')
+    parser.add_argument('-c', "--clobber", action='store_true', help='Overwrite pre-existing files')
  
     args = parser.parse_args()
 
@@ -28,8 +29,7 @@ def main():
     # Read config
     cfg = configparser.ConfigParser()
     cfg.read(configfile)
-    snr2rcs(src, cfg)
-
+    snr2rcs(src, cfg, verbose=args.verbose, clobber=args.clobber)
 
 
 if __name__ == '__main__':
