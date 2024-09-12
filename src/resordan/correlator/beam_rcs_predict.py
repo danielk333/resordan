@@ -8,6 +8,7 @@ import scipy
 import similaritymeasures
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from astropy.time import Time, TimeDelta
@@ -18,8 +19,8 @@ import h5py
 import sorts
 import pyant
 import pyorb
-import resordan.correlator.update_tle as utle
-import resordan.correlator.get_discos_cat as get_discos_cat
+import update_tle as utle
+import get_discos_cat
 
 try:
     from mpi4py import MPI
@@ -291,6 +292,7 @@ def main_predict(args):
         corrdata_filename = corr_event.name.split('.')[0] + '.h5'
         print(path2corrdata / corrdata_filename)
         print(corr_event)
+        
         with h5py.File(path2corrdata / corrdata_filename, 'r') as ds:
             indecies = ds['matched_object_index'][()][0, :]
             measurnment_id = ds['observation_index'][()]
@@ -298,6 +300,7 @@ def main_predict(args):
             indecies = indecies[measurnment_id]
             measurnment_id = np.arange(len(measurnment_id))
             time_id = time_id[measurnment_id]
+            
         with open(str(corr_event), 'rb') as fip:
             h_det = pickle.load(fip)
             for jj, events in enumerate(h_det.events):
@@ -397,7 +400,8 @@ def main_predict(args):
                                 
                         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
                         axes[0, 0].plot(t_jitter, matches)
-                        axes[0, 0].plot(t_jitter[best_match], matches[best_match], 'or')
+                        if best_mae == best_mae:
+                            axes[0, 0].plot(t_jitter[best_mae], pmae[best_mae], 'or')
                         axes[1, 0].plot(t_jitter, [x[0] for x in pmetas])
                         axes[0, 1].plot(t_jitter, [x[1] for x in pmetas])
                         axes[1, 1].plot(t_vec, 10*np.log10(SNR_sim/np.max(SNR_sim)),'k')
