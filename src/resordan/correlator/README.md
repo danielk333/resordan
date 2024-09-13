@@ -7,7 +7,7 @@ This submodule implements the 'beam_rcs_predict.py' function, which estimate RCS
 
 1. **space_track_download**: Download tle snapshot from space-track from start time to end time. This end data should be before EISCAT GMF starting time.
 1. **save_cluster_data**: Getting clustering targets and saving them into hourly files.
-1. **beam_correlator**: correlation analysis between radar measurements and a catalogue of know objetcs. The analysis uses TLE data from space-track. Each object is propagated in time using the SGP4 propagator. The shortest distance difference between the propagated and simulated range and range-rate are computed. Two distint populations of didstances will result. The analysis will continue with the population encapsulating the shortest ditances.
+1. **beam_correlator**: correlation analysis between radar measurements and a catalogue of know objects. The analysis uses TLE data from space-track. Each object is propagated in time using the SGP4 propagator. The shortest distance difference between the propagated and simulated range and range-rate are computed. Two distint populations of didstances will result. The analysis will continue with the population encapsulating the shortest ditances.
 1. **beam_rcs_predict**: Estimate RCS values and other parameters for targets using correlation and TLE. For each object, it creates an iteration in time of +-1.5 seconds. The best match is selected from this iteration.
  
 

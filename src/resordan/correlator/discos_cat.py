@@ -1,5 +1,6 @@
 import requests
 import urllib3
+import time
 urllib3.disable_warnings()
 
 URL = 'https://discosweb.esoc.esa.int'
