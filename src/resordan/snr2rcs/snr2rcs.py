@@ -64,7 +64,39 @@ PREDICT_PARAM_DEFAULTS = dict(
 # SNR2RCS
 ###############################################################
 
-def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
+def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=False):
+
+    """
+    For a given GMF product, does clustering, correlation and rcs prediction
+
+    Manages files in temporary directory, unless
+
+    Output RCS results
+
+    Params
+    ------
+        src: (str)
+            path to GMF product
+        cfg: (configparser.ConfigParser)
+            config object with credentials and processing parameters
+        dst: (str)
+            Path to directory with RCS results
+        verbose: (bool)
+            If true, print to screen
+        clobber: (bool)
+            If products already exists overwrite if clobber is True, else reuse
+        tmp: (str) (optional)
+            Path to temporary directory. Automatically created if not specified.
+        cleanup: (bool)
+            If true, cleanup temporary directory with intermedia results on termination
+
+    Results
+    -------
+        (str) 
+            path to RCS directory
+
+    """
+
 
     ###########################################
     # CREDENTIALS
@@ -84,9 +116,13 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
     ###########################################
     # SETUP
     ###########################################
-    gmf = Path(gmf)
-    if not gmf.is_dir():
-        raise Exception(f"GMF product is not directory: {gmf}")
+    src = Path(src)
+    if not src.is_dir():
+        raise Exception(f"GMF product is not directory: {src}")
+
+    dst = Path(dst)
+    if not dst.exists():
+        raise Exception(f"Out directory does not exists {dst}")
 
     # make temporary folder
     if tmp is None:
@@ -98,14 +134,15 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
     events_file = tmp / "events.pkl"
     tle_file = tmp / "tle.txt"
     correlations_file = tmp / "events.h5"
-    rcs_dir = tmp / "rcs"
 
     ###########################################
     # CLUSTERING
     ###########################################
-    
+
+    if verbose:
+        print('CLUSTERING:')
     if not events_file.exists() or clobber:
-        gmf_files = list(sorted([file for file in gmf.rglob('*.h5') if file.is_file()]))
+        gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
         gmf_dataset = GMFDataset.from_files(gmf_files)
 
         CLUSTER_PARAMS = {**CLUSTER_PARAM_DEFAULTS}
@@ -113,8 +150,6 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
             if cfg.has_option('CLUSTER', key):
                 CLUSTER_PARAMS[key] = eval(get_value(cfg, 'CLUSTER', key))
         
-        if verbose:
-            print('CLUSTERING:')
         events_dataset = algorithm.snr_peaks_detection(gmf_dataset, **CLUSTER_PARAMS)
         EventsDataset.to_pickle(events_dataset, events_file)
         if verbose:
@@ -123,6 +158,8 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
     ###########################################
     # SPACETRACK TLE DOWNLOAD
     ###########################################
+    if verbose:
+        print("TLE DOWNLOAD:")
 
     if not tle_file.exists() or clobber:
 
@@ -131,8 +168,6 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
             epoch = float(f['epoch_unix'][()])
             epoch_dt = dt.datetime.utcfromtimestamp(epoch)
 
-        if verbose:
-            print("TLE DOWNLOAD:")
         lines = fetch_tle(epoch_dt, st_user, st_passwd)
 
         if verbose:
@@ -145,6 +180,9 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
     ###########################################
     # CORRELATE
     ###########################################
+
+    if verbose:
+        print("CORRELATE:")
 
     CORRELATE_PARAMS = {**CORRELATE_PARAM_DEFAULTS}
     for key in CORRELATE_PARAM_DEFAULTS:
@@ -172,9 +210,6 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
     args.extend(['--range-rate-scaling', str(CORRELATE_PARAMS['range_rate_scaling'])])
     args.extend(['--range-scaling', str(CORRELATE_PARAMS['range_scaling'])])
 
-    if verbose:
-        print("CORRELATE:")
-
     proc = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr, text=True)
     # Wait for the process to complete and get the output
     stdout, stderr = proc.communicate()
@@ -182,6 +217,8 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
     ###########################################
     # PREDICT
     ###########################################
+    if verbose:
+        print("PREDICT:")
 
     PREDICT_PARAMS = {**PREDICT_PARAM_DEFAULTS}
     for key in PREDICT_PARAM_DEFAULTS:
@@ -197,18 +234,19 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
         catalog=str(tle_file),
         correlation_events=str(events_file.parent),
         correlation_data=str(correlations_file.parent),
-        output=str(rcs_dir),
+        output=str(dst),
         min_gain= PREDICT_PARAMS['min_gain'],
         min_snr= PREDICT_PARAMS['min_snr'],
         jitter_width= PREDICT_PARAMS['jitter_width'],
         v=verbose,
         format=PREDICT_PARAMS['format']
     )
-    print("PREDICT:")
     rcs_predict(args, discos_token)
 
+    ###########################################
+    # CLEANUP
+    ###########################################
+    if cleanup:
+        shutil.rmtree(str(tmp))
 
-
-
-    # cleanup
-    #shutil.rmtree(str(tmp))
+    return str(dst)
