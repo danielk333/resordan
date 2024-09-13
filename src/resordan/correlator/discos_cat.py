@@ -22,8 +22,30 @@ def get_discos_cat(catid, token):
     doc = response.json()
     doc = doc['data']
     
-    time.sleep(5) 
+    """
+    WARNING: time.sleep(5) is a DIRTY hack to limit the usage (frequency) of requests to the catalog
+    service.
+
+    This should not be hidden in this function, but either
+
+    1) exposed to the caller - for instance raising Exception when used too frequently,
+    leaving it to the caller to figure out how to best deal with this
+
+    or
+
+    2) investigate if there are some better ways to reduce the frequency, like aggregating 
+    multiple requests into one request, or caching results.
     
+    or
+
+    3) making this functionality asynchronous, implying that the caller places requests on a 
+    queue and waits for results 
+    """
+
+    print("WARNING: DIRTY HACK - SLEEP 5 sec to avoid overloading discos service")
+    time.sleep(5) 
+
+
     for i in doc:
         nameo = i['attributes']['name']
         satno = i['attributes']['satno']
