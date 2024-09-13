@@ -12,7 +12,8 @@ def main():
     parser.add_argument('-o', '--output', type=str, help='Path to output file')
     parser.add_argument('-v', "--verbose", action='store_true', help='Print results to screen')
     parser.add_argument('-c', "--clobber", action='store_true', help='Overwrite pre-existing files')
- 
+    parser.add_argument("--tmp", help='Temporary directory')
+    
     args = parser.parse_args()
 
     # gmf product
@@ -29,7 +30,7 @@ def main():
     # Read config
     cfg = configparser.ConfigParser()
     cfg.read(configfile)
-    snr2rcs(src, cfg, verbose=args.verbose, clobber=args.clobber)
+    snr2rcs(src, cfg, verbose=args.verbose, clobber=args.clobber, tmp=args.tmp)
 
 
 if __name__ == '__main__':

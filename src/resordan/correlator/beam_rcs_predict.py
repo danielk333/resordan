@@ -9,7 +9,6 @@ import similaritymeasures
 import subprocess
 
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from astropy.time import Time, TimeDelta
@@ -262,7 +261,7 @@ def updated_tle(line1,line2,data,radar):
 
     return new_tle
 
-def main_predict(args, token):
+def main_predict(args, token, debug=False):
 
     """
     TODO: This function should have a better name (rcs_predict?), and take
@@ -299,8 +298,9 @@ def main_predict(args, token):
 
     for corr_event in corr_events:
         corrdata_filename = corr_event.name.split('.')[0] + '.h5'
-        print(path2corrdata / corrdata_filename)
-        print(corr_event)
+        if debug:
+            print(path2corrdata / corrdata_filename)
+            print(corr_event)
         
         with h5py.File(path2corrdata / corrdata_filename, 'r') as ds:
             indecies = ds['matched_object_index'][()][0, :]
@@ -335,11 +335,12 @@ def main_predict(args, token):
 
                 obj = pop.get_object(obj_id)
                 norad = pop.data['oid'][obj_id]
-                print('Correlated TLE object for :')
-                print(f' - measurement_id: {meas_id}')
-                print(f' - object_id: {obj_id}')
-                print(f' - CAT ID: {norad}')
-                print(f' - event: {ename}')
+                if debug:
+                    print('Correlated TLE object for :')
+                    print(f' - measurement_id: {meas_id}')
+                    print(f' - object_id: {obj_id}')
+                    print(f' - CAT ID: {norad}')
+                    print(f' - event: {ename}')
                 
                 if norad < 81000:
                     results_folder = output_pth / ename
@@ -399,7 +400,8 @@ def main_predict(args, token):
                         best_mae = float('NaN')
                     else:
                         best_mae = np.nanargmin(pmae)
-                    print(best_mae)
+                    if debug:
+                        print(best_mae)
                     if np.isnan(best_mae):
                         pass
                     else:

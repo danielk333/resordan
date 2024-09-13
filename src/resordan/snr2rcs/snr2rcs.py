@@ -13,11 +13,12 @@ from resordan.data.gmf import GMFDataset
 from resordan.data.events import EventsDataset
 from resordan.correlator.beam_rcs_predict import main_predict as rcs_predict
 from resordan.correlator.space_track_download import fetch_tle
-#import spacetrack
 
 ISO_FMT = '%Y-%m-%dT%H:%M:%S'
-TMP = Path("/cluster/work/users/inar/usecase/tmp")
 
+###############################################################
+# CONFIG
+###############################################################
 
 def str_to_bool(value):
     """convert string to bool"""
@@ -59,7 +60,11 @@ PREDICT_PARAM_DEFAULTS = dict(
 )
 
 
-def snr2rcs(gmf, cfg, verbose=False, clobber=False):
+###############################################################
+# SNR2RCS
+###############################################################
+
+def snr2rcs(gmf, cfg, verbose=False, clobber=False, tmp=None):
 
     ###########################################
     # CREDENTIALS
@@ -84,18 +89,22 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False):
         raise Exception(f"GMF product is not directory: {gmf}")
 
     # make temporary folder
-    #temp_dir = Path(tempfile.mkdtemp())
-    tmp_dir = TMP
-    events_file = tmp_dir / "events.pkl"
-    tle_file = tmp_dir / "tle.txt"
-    correlations_file = tmp_dir / "events.h5"
-    rcs_dir = tmp_dir / "rcs"
+    if tmp is None:
+        tmp = tempfile.mkdtemp()
+    tmp = Path(tmp)
+    if not tmp.is_dir():
+        raise Exception(f"tmp is not a directory: {tmp}")        
+
+    events_file = tmp / "events.pkl"
+    tle_file = tmp / "tle.txt"
+    correlations_file = tmp / "events.h5"
+    rcs_dir = tmp / "rcs"
 
     ###########################################
     # CLUSTERING
     ###########################################
     
-    if not events_file.exists():
+    if not events_file.exists() or clobber:
         gmf_files = list(sorted([file for file in gmf.rglob('*.h5') if file.is_file()]))
         gmf_dataset = GMFDataset.from_files(gmf_files)
 
@@ -115,7 +124,7 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False):
     # SPACETRACK TLE DOWNLOAD
     ###########################################
 
-    if not tle_file.exists():
+    if not tle_file.exists() or clobber:
 
         # get timestamp for start of gmf product
         with h5py.File(gmf_files[0], "r") as f:        
@@ -137,40 +146,38 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False):
     # CORRELATE
     ###########################################
 
-    if not correlations_file.exists():
+    CORRELATE_PARAMS = {**CORRELATE_PARAM_DEFAULTS}
+    for key in CORRELATE_PARAM_DEFAULTS:
+        if not cfg.has_option('CORRELATE', key):
+            continue
+        if key in ['jitter', 'std', 'save_states']:
+            CORRELATE_PARAMS[key] = str_to_bool(get_value(cfg, 'CORRELATE', key))
+        else:
+            CORRELATE_PARAMS[key] = get_value(cfg, 'CORRELATE', key)
 
-        CORRELATE_PARAMS = {**CORRELATE_PARAM_DEFAULTS}
-        for key in CORRELATE_PARAM_DEFAULTS:
-            if not cfg.has_option('CORRELATE', key):
-                continue
-            if key in ['jitter', 'std', 'save_states']:
-                CORRELATE_PARAMS[key] = str_to_bool(get_value(cfg, 'CORRELATE', key))
-            else:
-                CORRELATE_PARAMS[key] = get_value(cfg, 'CORRELATE', key)
+    args = [
+        "rcorrelate", "eiscat_uhf",
+        str(tle_file),
+        str(events_file),
+        str(correlations_file),
+    ]
+    if CORRELATE_PARAMS['std']:
+        args.append("--std")
+    if CORRELATE_PARAMS['jitter']:
+        args.append("--jitter")
+    if CORRELATE_PARAMS['save_states']:
+        args.append("--save-states")
+    if clobber:
+        args.append("--clobber")
+    args.extend(['--range-rate-scaling', str(CORRELATE_PARAMS['range_rate_scaling'])])
+    args.extend(['--range-scaling', str(CORRELATE_PARAMS['range_scaling'])])
 
-        args = [
-            "rcorrelate", "eiscat_uhf",
-            str(tle_file),
-            str(events_file),
-            str(correlations_file),
-        ]
-        if CORRELATE_PARAMS['std']:
-            args.append("--std")
-        if CORRELATE_PARAMS['jitter']:
-            args.append("--jitter")
-        if CORRELATE_PARAMS['save_states']:
-            args.append("--save-states")
-        if clobber:
-            args.append("--clobber")
-        args.extend(['--range-rate-scaling', str(CORRELATE_PARAMS['range_rate_scaling'])])
-        args.extend(['--range-scaling', str(CORRELATE_PARAMS['range_scaling'])])
+    if verbose:
+        print("CORRELATE:")
 
-        if verbose:
-            print("CORRELATE:")
-    
-        proc = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr, text=True)
-        # Wait for the process to complete and get the output
-        stdout, stderr = proc.communicate()
+    proc = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr, text=True)
+    # Wait for the process to complete and get the output
+    stdout, stderr = proc.communicate()
 
     ###########################################
     # PREDICT
@@ -185,8 +192,6 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False):
         if key in ['format']:
             PREDICT_PARAMS[key] = get_value(cfg, 'PREDICT', key)
 
-
-    print(PREDICT_PARAMS)
     args = argparse.Namespace(
         radar='eiscat_uhf',
         catalog=str(tle_file),
@@ -200,12 +205,10 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False):
         format=PREDICT_PARAMS['format']
     )
     print("PREDICT:")
-    print(args)
     rcs_predict(args, discos_token)
 
 
 
 
-    # find gmf files
- 
-    #shutil.rmtree(tmp_dir)
+    # cleanup
+    #shutil.rmtree(str(tmp))
