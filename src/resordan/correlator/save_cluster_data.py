@@ -12,6 +12,15 @@ from pathlib import Path
 logger = logging.getLogger("resordan")
 logging.basicConfig(level=logging.INFO)
 
+
+"""
+TODO - this file is mainly about clustering, and does not belong in the correlator folder.
+A simplified version has been created in clustering/main.py. Please consider removing this,
+and/or extending the functionality in clustering/main.py, with useful features from here. 
+"""
+
+
+
 def main(input_args=None):
     Parser = argparse.ArgumentParser(description='Getting clustering events and saving')
     Parser.add_argument('-gmf', type=str, action='store', dest='GMF', help='Path to GMF directory')

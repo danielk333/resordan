@@ -1,8 +1,6 @@
 import requests
 import urllib3
 urllib3.disable_warnings()
-import time
-import subprocess
 
 URL = 'https://discosweb.esoc.esa.int'
     
@@ -43,15 +41,5 @@ def get_discos_cat(catid, token):
     
     return nameo, satno, objectClass, mission, mass, shape, width, height, depth, diameter, span, xSectMax, xSectMin, xSectAvg
 
-
-
 # Options: owhd, osp, os1, os2, os3, rbd; o=object, w=width, h=height, d=depth, sp=sphere, s=starlink, 1=grupo1,etc, rbd=rocket bodies + debris
-def main(catid):
-
-    return get_discos_cat(catid, token)
-
-
-if __name__ == '__main__':
-    # TODO - need catid
-    main()
 

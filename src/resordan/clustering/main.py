@@ -3,7 +3,7 @@ from pathlib import Path
 
 from resordan.clustering import algorithm as clustering
 from resordan.data.gmf import GMFDataset
-from resordan.data.events import EventDataset
+from resordan.data.events import EventsDataset
 
 DETECTOR_PARAMS = dict(
     # loss_weights=(1e-3, 1e-3),
@@ -36,7 +36,7 @@ def main(input_args=None):
     if Path(args.out).exists():
         print (f"File {args.out} already exists")
     else:
-        EventDataset.to_pickle(events_dataset, args.out)
+        EventsDataset.to_pickle(events_dataset, args.out)
 
 if __name__ == '__main__':
     main()

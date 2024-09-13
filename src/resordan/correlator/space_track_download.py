@@ -5,9 +5,32 @@ import getpass
 import argparse
 import pathlib
 from datetime import datetime, timedelta
+import datetime as dt
 import subprocess
 import codecs
 import spacetrack 
+
+
+"""
+fetch_tle() is added as a standalone function to access core functionality.
+
+TODO: Refactor so that the CLI interface (main()) uses this function.
+"""
+
+def fetch_tle(epoch_dt, st_user, st_passwd):
+    st = spacetrack.SpaceTrackClient(identity=st_user, password=st_passwd)
+    # backdate to 23 hour period before epoch dt
+    dt0 = epoch_dt - dt.timedelta(hours=24)
+    dt1 = epoch_dt - dt.timedelta(hours=1)
+    drange = spacetrack.operators.inclusive_range(dt0, dt1)
+    return list(st.tle_publish(
+        iter_lines=True, 
+        orderby='TLE_LINE1', 
+        format='tle',
+        publish_epoch=drange
+    ))
+
+
 
 
 _iso_fmt = '%Y-%m-%dT%H:%M:%S'

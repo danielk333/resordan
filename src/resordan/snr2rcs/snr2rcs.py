@@ -11,9 +11,9 @@ import subprocess
 from resordan.clustering import algorithm
 from resordan.data.gmf import GMFDataset
 from resordan.data.events import EventsDataset
-# from resordan.correlator.beam_correlator import ...
 from resordan.correlator.beam_rcs_predict import main_predict as rcs_predict
-import spacetrack
+from resordan.correlator.space_track_download import fetch_tle
+#import spacetrack
 
 ISO_FMT = '%Y-%m-%dT%H:%M:%S'
 TMP = Path("/cluster/work/users/inar/usecase/tmp")
@@ -117,25 +117,15 @@ def snr2rcs(gmf, cfg, verbose=False, clobber=False):
 
     if not tle_file.exists():
 
-        st = spacetrack.SpaceTrackClient(identity=st_user, password=st_passwd)
-
         # get timestamp for start of gmf product
         with h5py.File(gmf_files[0], "r") as f:        
             epoch = float(f['epoch_unix'][()])
             epoch_dt = dt.datetime.utcfromtimestamp(epoch)
-        # backdate to 23 hour period before product start
-        dt0 = epoch_dt - dt.timedelta(hours=24)
-        dt1 = epoch_dt - dt.timedelta(hours=1)
-        drange = spacetrack.operators.inclusive_range(dt0, dt1)
-        # download
+
         if verbose:
             print("TLE DOWNLOAD:")
-        lines = list(st.tle_publish(
-            iter_lines=True, 
-            orderby='TLE_LINE1', 
-            format='tle',
-            publish_epoch=drange
-        ))
+        lines = fetch_tle(epoch_dt, st_user, st_passwd)
+
         if verbose:
             print(f"{len(lines)} lines")
         # write to file

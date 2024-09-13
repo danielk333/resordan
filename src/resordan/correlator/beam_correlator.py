@@ -177,6 +177,16 @@ def save_correlation_data(output_pth, indices, metric, correlation_data, measure
 
 def main(input_args=None):
 
+    """
+    TODO : This function should be refactored so that the functionality is available
+    as a named function, so that it is available for import
+    Consider also letting small inputs such as catalog and observations be passed as parameter, instead 
+    This would also imply changing output of functions that produce catalog and observations, so that 
+    results are returned as objects, and not necessarily serialized and written to file.
+
+    Also, core functionality should have a name, and named parameters.
+    """
+
     if comm is not None:
         print('MPI detected')
         if comm.size > 1:

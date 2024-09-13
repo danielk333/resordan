@@ -21,7 +21,7 @@ import sorts
 import pyant
 import pyorb
 import resordan.correlator.update_tle as utle
-from resordan.correlator.get_discos_cat import get_discos_cat
+from resordan.correlator.discos_cat import get_discos_cat
 
 try:
     from mpi4py import MPI
@@ -263,6 +263,14 @@ def updated_tle(line1,line2,data,radar):
     return new_tle
 
 def main_predict(args, token):
+
+    """
+    TODO: This function should have a better name (rcs_predict?), and take
+    in named parameters, instead of an argparse tuple, and also be documented.
+    This would make it more accessible for external usage (beyond CLI access), 
+    including unittests etc.
+    """
+
     radar = getattr(sorts.radars, args.radar)
     
     t_jitter = np.arange(
