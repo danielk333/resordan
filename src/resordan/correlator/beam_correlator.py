@@ -5,6 +5,7 @@ Correlating data with TLE catalog
 ===================================
 
 '''
+import os
 import argparse
 import pathlib
 import pickle
@@ -175,7 +176,7 @@ def save_correlation_data(output_pth, indices, metric, correlation_data, measure
             )
 
 
-def main(input_args=None):
+def main_correlator(args):
 
     """
     TODO : This function should be refactored so that the functionality is available
@@ -192,6 +193,160 @@ def main(input_args=None):
         if comm.size > 1:
             print('Using MPI...')
  
+    s_dr = args.range_rate_scaling
+    s_r = args.range_scaling
+
+    radar = getattr(sorts.radars, args.radar)
+
+    tle_pth = pathlib.Path(args.catalog).resolve()
+    output_pth = pathlib.Path(args.output).resolve()
+    input_pth = pathlib.Path(args.input).resolve()
+    
+    if args.std:
+        meta_vars = ['r_std', 'v_std']
+    else:
+        meta_vars = []
+
+    if args.jitter:
+        propagation_handling = jitter_propagation_handling
+    else:
+        propagation_handling = default_propagation_handling
+
+    meta_vars.append('dr_scale')
+    meta_vars.append('dv_scale')
+    
+    input_files = input_pth.glob('*.pkl')
+    input_files = sorted(input_files)
+    
+    for in_file in input_files:
+        print('Loading monostatic measurements')
+        h5_file = (in_file.name.split('.'))[0] + '.h5'
+        output_file = output_pth / h5_file
+        measurements = []
+        with open(str(in_file), 'rb') as filer:
+            h_det = pickle.load(filer)
+            t = [] # unix time
+            r = [] # meters
+            v = [] # meters/s
+            for event in h_det.events:
+                epoch = event.epoch
+                snr = event.snr
+                snrid = np.argmax(snr)
+                t.append(epoch + event.t[snrid])
+                r.append(event.range[snrid])
+                v.append(event.range_rate[snrid])
+                
+            t = np.array(t)
+            r = np.array(r)
+            v = np.array(v)
+                
+            inds = np.argsort(t)
+            t = t[inds]
+            r = r[inds]
+            v = v[inds]
+
+            times = Time(t, format='unix', scale='utc')
+            epoch = times[0]
+            t = (times - epoch).sec
+                
+            # #######################
+            # This is the interface layer between the input
+            # data type and the correlator
+            # #######################
+            dat = {
+                'r': r*2,  # two way
+                'v': v*2,  # two way
+                't': t,
+                'times': times,
+                'epoch': epoch,
+                'tx': radar.tx[0],
+                'rx': radar.rx[0],
+                'measurement_num': len(t),
+                'dr_scale': s_r,
+                'dv_scale': s_dr,
+            }
+
+            if args.std:
+                dat['r_std'] = h_det['r_std'][()]
+                dat['v_std'] = h_det['v_std'][()]
+
+            measurements.append(dat)
+    
+        print('Loading TLE population')
+        pop = sorts.population.tle_catalog(tle_pth, cartesian=False)
+        if args.target_epoch is not None:
+            args.target_epoch = Time(args.target_epoch, format='iso', scale='utc').mjd
+
+        # choosing TLEs close to the observation window
+        pop.unique(target_epoch=args.target_epoch)
+
+        # correlate requires output in ECEF
+        pop.out_frame = 'ITRS'
+        print(f'Population size: {len(pop)}')
+        print('Correlating data and population')
+
+        if output_file.is_file() and not args.clobber:
+            print('Loading correlation data from cache')
+            with h5py.File(output_file, "r") as hf:
+                 metric=hf['matched_object_metric']
+                 indices=hf['matched_object_index']
+                 cdat=hf['object_index']
+                 metric=metric[:]
+                 indices=indices[:]
+                 cdat=cdat[:]
+        else:
+
+            if comm is not None:
+                comm.barrier()
+
+            MPI = comm is not None and comm.size > 1
+
+            indices, metric, correlation_data = sorts.correlate(
+                measurements = measurements,
+                population = pop,
+                n_closest = 1,
+                meta_variables = meta_vars,
+                metric = vector_diff_metric, # what each parameter means? # Lili
+                sorting_function = lambda x: np.argsort(x['metric'], axis=0),
+                metric_dtype = res_t,
+                metric_reduce = None,
+                scalar_metric = False,
+                propagation_handling = propagation_handling,
+                MPI = MPI,
+                save_states = args.save_states,
+            )
+
+            if comm is None or comm.rank == 0:
+                save_correlation_data(
+                    output_file,
+                    indices,
+                    metric,
+                    correlation_data,
+                    measurements,
+                    meta = dict(
+                        radar_name = args.radar,
+                        tx_lat = radar.tx[0].lat,
+                        tx_lon = radar.tx[0].lon,
+                        tx_alt = radar.tx[0].alt,
+                        rx_lat = radar.rx[0].lat,
+                        rx_lon = radar.rx[0].lon,
+                        rx_alt = radar.rx[0].alt,
+                        range_scaling = s_r,
+                        range_rate_scaling = s_dr,
+                    ),
+                    save_states = args.save_states,
+                )
+
+        if comm is None or comm.rank == 0:
+            print('Individual measurement match metric:')
+            for mind, (ind, dst) in enumerate(zip(indices.T, metric.T)):
+                print(f'measurement = {mind}')
+                for res in range(len(ind)):
+                    print(f'-- result rank = {res} | object ind = {ind[res]} | metric = {dst[res]} | obj = {pop["oid"][ind[res]]}')
+
+
+def main(input_args=None):
+
     parser = argparse.ArgumentParser(description='Calculate TLE catalog correlation for a beampark')
     parser.add_argument('radar', type=str, help='The observing radar system')
     parser.add_argument('catalog', type=str, help='TLE catalog path')
@@ -209,164 +364,9 @@ def main(input_args=None):
         args = parser.parse_args()
     else:
         args = parser.parse_args(input_args)
-
-    s_dr = args.range_rate_scaling
-    s_r = args.range_scaling
-
-    radar = getattr(sorts.radars, args.radar)
-
-    tle_pth = pathlib.Path(args.catalog).resolve()
-    output_pth = pathlib.Path(args.output).resolve()
-    input_pth = pathlib.Path(args.input).resolve()
-    
-    if args.std:
-        meta_vars = [
-            'r_std',
-            'v_std',
-        ]
-    else:
-        meta_vars = []
-
-    if args.jitter:
-        propagation_handling = jitter_propagation_handling
-    else:
-        propagation_handling = default_propagation_handling
-
-    meta_vars.append('dr_scale')
-    meta_vars.append('dv_scale')
-
-    measurements = []
-    
-    if output_pth.is_file() and not args.clobber:
-        print('Using cached data, not reading measurements file')
-    else:
-        if input_pth.is_file():
-            input_files = [input_pth]
-        else:
-            input_files = input_pth.glob('**/*.h5')
         
-        for in_file in input_files:
-            print('Loading monostatic measurements')
-            with open(str(in_file), 'rb') as filer:
-                h_det = pickle.load(filer)
-                t = [] # unix time
-                r = [] # meters
-                v = [] # meters/s
-                for event in h_det.events:
-                    epoch = event.epoch
-                    snr = event.snr
-                    snrid = np.argmax(snr)
-                    t.append(epoch + event.t[snrid])
-                    r.append(event.range[snrid])
-                    v.append(event.range_rate[snrid])
-                
-                t = np.array(t)
-                r = np.array(r)
-                v = np.array(v)
-                
-                inds = np.argsort(t)
-                t = t[inds]
-                r = r[inds]
-                v = v[inds]
+    main_correlator(args)
 
-                times = Time(t, format='unix', scale='utc')
-                epoch = times[0]
-                t = (times - epoch).sec
-                
-                # #######################
-                # This is the interface layer between the input
-                # data type and the correlator
-                # #######################
-                dat = {
-                    'r': r*2,  # two way
-                    'v': v*2,  # two way
-                    't': t,
-                    'times': times,
-                    'epoch': epoch,
-                    'tx': radar.tx[0],
-                    'rx': radar.rx[0],
-                    'measurement_num': len(t),
-                    'dr_scale': s_r,
-                    'dv_scale': s_dr,
-                }
-
-                if args.std:
-                    dat['r_std'] = h_det['r_std'][()]
-                    dat['v_std'] = h_det['v_std'][()]
-
-                measurements.append(dat)
-    
-    print('Loading TLE population')
-    pop = sorts.population.tle_catalog(tle_pth, cartesian=False)
-    if args.target_epoch is not None:
-        args.target_epoch = Time(args.target_epoch, format='iso', scale='utc').mjd
-
-    # choosing TLEs close to the observation window
-    pop.unique(target_epoch=args.target_epoch)
-
-    # correlate requires output in ECEF 
-    pop.out_frame = 'ITRS'
-    print(f'Population size: {len(pop)}')
-    print('Correlating data and population')
-
-    if output_pth.is_file() and not args.clobber:
-        print('Loading correlation data from cache')
-        with h5py.File(output_pth, "r") as hf:
-             metric=hf['matched_object_metric']
-             indices=hf['matched_object_index']
-             cdat=hf['object_index']
-             metric=metric[:]
-             indices=indices[:]
-             cdat=cdat[:]
-    else:
-
-        if comm is not None:
-            comm.barrier()
-
-        MPI = comm is not None and comm.size > 1
-
-        indices, metric, correlation_data = sorts.correlate(
-            measurements = measurements,
-            population = pop,
-            n_closest = 1,
-            meta_variables = meta_vars,
-            metric = vector_diff_metric, # what each parameter means? # Lili
-            sorting_function = lambda x: np.argsort(x['metric'], axis=0),
-            metric_dtype = res_t,
-            metric_reduce = None,
-            scalar_metric = False,
-            propagation_handling = propagation_handling,
-            MPI = MPI,
-            save_states = args.save_states,
-        )
-
-        if comm is None or comm.rank == 0:
-            save_correlation_data(
-                output_pth, 
-                indices, 
-                metric, 
-                correlation_data, 
-                measurements,
-                meta = dict(
-                    radar_name = args.radar,
-                    tx_lat = radar.tx[0].lat,
-                    tx_lon = radar.tx[0].lon,
-                    tx_alt = radar.tx[0].alt,
-                    rx_lat = radar.rx[0].lat,
-                    rx_lon = radar.rx[0].lon,
-                    rx_alt = radar.rx[0].alt,
-                    range_scaling = s_r,
-                    range_rate_scaling = s_dr,
-                ),
-                save_states = args.save_states,
-            )
-
-    if comm is None or comm.rank == 0:
-        print('Individual measurement match metric:')
-        for mind, (ind, dst) in enumerate(zip(indices.T, metric.T)):
-            print(f'measurement = {mind}')
-            for res in range(len(ind)):
-                print(f'-- result rank = {res} | object ind = {ind[res]} | metric = {dst[res]} | obj = {pop["oid"][ind[res]]}')
 
 
 if __name__ == '__main__':
