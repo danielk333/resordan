@@ -42,7 +42,7 @@ def get_discos_cat(catid, token):
     queue and waits for results 
     """
 
-    print("WARNING: DIRTY HACK - SLEEP 5 sec to avoid overloading discos service")
+    print("WARNING: wait 5 sec to avoid overloading discos service")
     time.sleep(5) 
 
 
