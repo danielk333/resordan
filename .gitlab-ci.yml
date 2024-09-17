@@ -1,0 +1,36 @@
+# Official language image. Look for the different tagged releases at:
+# https://hub.docker.com/r/library/python/tags/
+image: python:3.8.10
+
+stages:
+  - test
+  - release
+
+# Prepare the development environment
+.devsetup:
+  before_script:
+    - python -V
+    # Prepare and activate virtual env
+    - pip install -U pip
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    # install the package and develop dependencies
+    - pip install .[develop]
+    - apt update
+    - apt install -y pandoc
+
+###############
+## Releasing ##
+
+# Compile documentation for publication
+pages:
+  stage: release
+  extends: .devsetup
+  script:
+    - mkdocs build --site-dir public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
