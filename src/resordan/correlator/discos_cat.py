@@ -8,7 +8,7 @@ URL = 'https://discosweb.esoc.esa.int'
 
 def get_discos_cat(catid, token):
     """
-    catid (?):
+    catid (str):
         discos catalogue id
     token (str):
         access token from DISCOS

@@ -2,7 +2,19 @@
 
 REsident Space Object RAdar Data ANalysis
 
+
 # Install
+
+## Pre requirements
+    - python
+    - Java/8
+    - Maven
+    - JCC
+    - astropy
+    - spacetrack
+    - similaritymeasures
+    - sorts
+    - orekit
 
 ## Step 1 - Create virtual environment
 ```sh
