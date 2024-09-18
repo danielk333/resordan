@@ -1,13 +1,8 @@
-#docs
-docs/build/
-docs/source/autosummary/
-docs/source/autogallery/
-docs/source/autopackages/
-docs/jupyter_execute/
+#tooling
 *_report
 
 #notebook gallery
-docs/source/notebooks/*.ipynb
+docs/notebooks/*.ipynb
 
 #Sublime
 *.sublime*
@@ -65,7 +60,7 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
-.pytest_cache/
+.pytest_cache
 
 # Translations
 *.mo
@@ -89,11 +84,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
 
 # misc output and logs
 logfile
