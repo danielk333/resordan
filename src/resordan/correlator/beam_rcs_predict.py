@@ -437,12 +437,11 @@ def main_predict(args, token, debug=False):
                         fig.savefig(results_folder / f'correlated_pass_range_match.{args.format}')
                         plt.close(fig)
 
-                        # NOTE : wait for pyant bug to be fixed
-                        # fig, ax = plt.subplots(figsize=(12, 8))
-                        # ax.plot(pth[0, :], pth[1, :], '-w')
-                        # pyant.plotting.gain_heatmap(radar.tx[0].beam, min_elevation=85.0, ax=ax)
-                        # fig.savefig(results_folder / f'correlated_pass_pth_gain.{args.format}')
-                        # plt.close(fig)
+                        fig, ax = plt.subplots(figsize=(12, 8))
+                        ax.plot(pth[0, :], pth[1, :], '-w')
+                        pyant.plotting.gain_heatmap(radar.tx[0].beam, min_elevation=85.0, ax=ax)
+                        fig.savefig(results_folder / f'correlated_pass_pth_gain.{args.format}')
+                        plt.close(fig)
                         
                         fig, axes = plt.subplots(2, 2, figsize=(16, 8), sharex=True)
                         axes[0, 0].plot(data.t, diam*1e2)
