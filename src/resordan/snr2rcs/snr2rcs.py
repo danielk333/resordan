@@ -196,7 +196,7 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
     args = [
         "rcorrelate", "eiscat_uhf",
         str(tle_file),
-        str(events_file),
+        str(events_file.parent),
         str(correlations_file),
     ]
     if CORRELATE_PARAMS['std']:
