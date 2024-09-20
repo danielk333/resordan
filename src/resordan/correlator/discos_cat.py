@@ -103,12 +103,11 @@ def get_discos_objects(object_ids, token):
             data_tuple : (nameo, satno, objectClass, mission, mass, shape, width, height, depth, diameter, span, xSectMax, xSectMin, xSectAvg)
 
     """
-    object_ids_str = ','.join(object_ids)
+    object_ids_str = ','.join([str(i) for i in object_ids])
     response = requests.get(
         f'{URL}/api/objects',
         headers={'Authorization': f'Bearer {token}','DiscosWeb-Api-Version': '2'},
-        params={'filter': f'in(satno,({object_ids_str}))',
-                'sort': 'satno'},
+        params={'filter': f'in(satno,({object_ids_str}))'},
         verify=False)
     doc = response.json()    
     return [(item['id'], item_as_tuple(item)) for item in doc['data']]

@@ -1,5 +1,3 @@
-
-import argparse
 from pathlib import Path
 import sys
 import h5py
@@ -11,7 +9,7 @@ import subprocess
 from resordan.clustering import algorithm
 from resordan.data.gmf import GMFDataset
 from resordan.data.events import EventsDataset
-from resordan.correlator.beam_rcs_predict import main_predict as rcs_predict
+from resordan.correlator.beam_rcs_estimator import rcs_estimator
 from resordan.correlator.space_track_download import fetch_tle
 
 ISO_FMT = '%Y-%m-%dT%H:%M:%S'
@@ -97,7 +95,6 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
 
     """
 
-
     ###########################################
     # CREDENTIALS
     ###########################################
@@ -131,9 +128,9 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
     if not tmp.is_dir():
         raise Exception(f"tmp is not a directory: {tmp}")        
 
-    events_file = tmp / "events.pkl"
     tle_file = tmp / "tle.txt"
-    correlations_file = tmp / "events.h5"
+    events_file = tmp / "events.pkl"
+    correlations_dir = tmp
 
     ###########################################
     # CLUSTERING
@@ -197,7 +194,7 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
         "rcorrelate", "eiscat_uhf",
         str(tle_file),
         str(events_file.parent),
-        str(correlations_file),
+        str(correlations_dir),
     ]
     if CORRELATE_PARAMS['std']:
         args.append("--std")
@@ -229,19 +226,22 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
         if key in ['format']:
             PREDICT_PARAMS[key] = get_value(cfg, 'PREDICT', key)
 
-    args = argparse.Namespace(
-        radar='eiscat_uhf',
-        catalog=str(tle_file),
-        correlation_events=str(events_file.parent),
-        correlation_data=str(correlations_file.parent),
-        output=str(dst),
-        min_gain= PREDICT_PARAMS['min_gain'],
-        min_snr= PREDICT_PARAMS['min_snr'],
-        jitter_width= PREDICT_PARAMS['jitter_width'],
-        v=verbose,
-        format=PREDICT_PARAMS['format']
+
+
+    # rcs estimate
+    rcs_estimator(
+        'eiscat_uhf',
+        str(tle_file),
+        str(events_file.parent),
+        str(correlations_dir),
+        str(dst),
+        discos_token,
+        jitter_width=PREDICT_PARAMS['jitter_width'],
+        min_gain=PREDICT_PARAMS['min_gain'],
+        min_snr=PREDICT_PARAMS['min_snr'],
+        fileformat=PREDICT_PARAMS['format'],
+        verbose=verbose
     )
-    rcs_predict(args, discos_token)
 
     ###########################################
     # CLEANUP

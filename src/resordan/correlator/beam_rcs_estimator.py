@@ -37,9 +37,12 @@ except ImportError:
 
 
 
+###################################################################
+# UTIL
+###################################################################
+
 def offaxis_weighting(angles):
-    '''Weight for offaxis angle, normalized for this set of angles
-    '''
+    '''Weight for offaxis angle, normalized for this set of angles'''
     if angles.size == 0:
         return np.ones_like(angles)
     w = angles.copy()
@@ -49,7 +52,12 @@ def offaxis_weighting(angles):
     return w
 
 
-def matching_function(data, SNR_sim, off_angles, args, debug=False):
+def matching_function(data, SNR_sim, off_angles, min_snr, verbose=False):
+
+    """
+    TODO: docstring
+    """
+
     # Filter measurnments
     _SNR_sim = SNR_sim.copy()
     _SNR_sim[_SNR_sim <= 0] = np.nan
@@ -66,7 +74,7 @@ def matching_function(data, SNR_sim, off_angles, args, debug=False):
     #ratio of peak signal and limit should be the same
     #as the ratio of the simulated peak and the simulated signal
     #use this to calculate the limit used in simulation
-    snrdb_lim_rel = max_sndb_x - args.min_snr
+    snrdb_lim_rel = max_sndb_x - min_snr
     sns_lim = max_sndb_y - snrdb_lim_rel
     #the normalized limit is, since the normalizations put peaks to 1
     snrdb_lim_norm = -snrdb_lim_rel
@@ -91,17 +99,17 @@ def matching_function(data, SNR_sim, off_angles, args, debug=False):
     tot = np.sum(idx)
     
     dhit_idx = np.logical_and.reduce([
-        sndb > args.min_snr,
+        sndb > min_snr,
         snsdb > sns_lim,
         idx,
     ])
     dcut_idx = np.logical_and.reduce([
-        np.logical_or(sndb <= args.min_snr, np.logical_not(idx_x)),
+        np.logical_or(sndb <= min_snr, np.logical_not(idx_x)),
         snsdb > sns_lim,
         idx_y,
     ])
     dmiss_idx = np.logical_and.reduce([
-        sndb > args.min_snr,
+        sndb > min_snr,
         np.logical_or(snsdb <= sns_lim, np.logical_not(idx_y)),
         idx_x,
     ])
@@ -137,7 +145,7 @@ def matching_function(data, SNR_sim, off_angles, args, debug=False):
     else:
         mae = similaritymeasures.mae(xxx[:],yyy[:])
     
-    if debug:
+    if verbose:
         print('idx_x: ', idx_x)
         print('idx_y: ', idx_y)
         print('idx: ', idx)
@@ -173,6 +181,9 @@ def snr2rcs(
             radar_albedo=1.0,
         ):
 
+    """
+    TODO: docstring
+    """
     rx_noise = scipy.constants.k*rx_noise_temp*bandwidth
     power = snr*rx_noise/radar_albedo
 
@@ -180,7 +191,11 @@ def snr2rcs(
 
     return rcsvalue
 
-def generate_prediction(data, t, obj, radar, args):
+
+def generate_prediction(data, t, obj, radar, min_gain):
+    """
+    TODO: docstring
+    """
 
     states_ecef = obj.get_state(t) # /Users/licr/Documents/Snr2rcs/SORTS/sorts/space_object.py and /Users/licr/Documents/Snr2rcs/SORTS/sorts/propagator/pysgp4.py
     ecef_r = states_ecef[:3, :] - radar.tx[0].ecef[:, None]
@@ -239,7 +254,7 @@ def generate_prediction(data, t, obj, radar, args):
         radar_albedo=1.0,
     )
     
-    low_gain_inds = G_pth_db < args.min_gain
+    low_gain_inds = G_pth_db < min_gain
     diam[low_gain_inds] = np.nan
     SNR_sim[low_gain_inds] = 0
     rcsvalue[low_gain_inds] = np.nan
@@ -261,29 +276,61 @@ def updated_tle(line1,line2,data,radar):
 
     return new_tle
 
-def main_predict(args, token, debug=False):
+
+
+###################################################################
+# RCS ESTIMATE
+###################################################################
+
+def rcs_estimator(
+    radarid, 
+    catalog,
+    correlation_events, 
+    correlation_data,
+    output,
+    token,
+    jitter_width=1.5,
+    min_gain=10.0,
+    min_snr=5.0,
+    fileformat='png',
+    verbose=False):
+
 
     """
-    TODO: This function should have a better name (rcs_predict?), and take
-    in named parameters, instead of an argparse tuple, and also be documented.
-    This would make it more accessible for external usage (beyond CLI access), 
-    including unittests etc.
+    Estimate Radar Cross Section
+ 
+    Params
+    ------
+
+    radarid: (str)
+        identifier for radarsystem 
+    catalog: (str)
+        path to TLE file
+    correlation_events: (str)
+        path to directory with pickled detection files
+    correlation_data: (str)
+        path to directory with correlations
+    token: (str)
+        access token for Discos service
+    output: (str)
+        path to output directory
+
     """
 
-    radar = getattr(sorts.radars, args.radar)
+    radar = getattr(sorts.radars, radarid)
     
     t_jitter = np.arange(
-        -args.jitter_width, 
-        args.jitter_width, 
+        -jitter_width, 
+        jitter_width, 
         0.1, 
         dtype=np.float64,
     )
 
-    output_pth = Path(args.output).resolve()
+    output_pth = Path(output).resolve()
     output_pth.mkdir(exist_ok=True, parents=True)
-    path2correvents = Path(args.correlation_events).resolve()
-    path2corrdata = Path(args.correlation_data).resolve()
-    tle_pth = Path(args.catalog).resolve()
+    path2correvents = Path(correlation_events).resolve()
+    path2corrdata = Path(correlation_data).resolve()
+    tle_pth = Path(catalog).resolve()
         
     corr_events = list(sorted(path2correvents.rglob('*.pkl')))
     
@@ -298,7 +345,7 @@ def main_predict(args, token, debug=False):
 
     for corr_event in corr_events:
         corrdata_filename = corr_event.name.split('.')[0] + '.h5'
-        if debug:
+        if verbose:
             print(path2corrdata / corrdata_filename)
             print(corr_event)
         
@@ -331,11 +378,11 @@ def main_predict(args, token, debug=False):
     
                 meas_id = measurnment_id[select_id][0]
                 obj_id = indecies[select_id][0]
-                ename = args.radar + '_' + datetime.utcfromtimestamp(eepoch).strftime('%Y%m%d_%H%M%S_%f')
+                ename = radarid + '_' + datetime.utcfromtimestamp(eepoch).strftime('%Y%m%d_%H%M%S_%f')
 
                 obj = pop.get_object(obj_id)
                 norad = pop.data['oid'][obj_id]
-                if debug:
+                if verbose:
                     print('Correlated TLE object for :')
                     print(f' - measurement_id: {meas_id}')
                     print(f' - object_id: {obj_id}')
@@ -355,7 +402,7 @@ def main_predict(args, token, debug=False):
                     #line2 = pop.data[np.where(pop.data['oid'] == norad)]['line2']
                     #print(line1)
                     #print(line2)
-                    #new_tle = updated_tle(line1,line2,data,args.radar) # corr_events or data
+                    #new_tle = updated_tle(line1,line2,data,radarid) # corr_events or data
                     #print(new_tle)
                     #new_pop = sorts.population.tle_catalog([(new_tle[0],new_tle[1])], cartesian=False)
                     #obj = new_pop.get_object(0)
@@ -374,7 +421,7 @@ def main_predict(args, token, debug=False):
                     
                     for tind in range(len(t_jitter)):
                         _t = t_vec + dt + t_jitter[tind]
-                        pdatas[tind] = generate_prediction(data, _t, obj, radar, args)
+                        pdatas[tind] = generate_prediction(data, _t, obj, radar, min_gain)
                         SNR_sim, G_pth, diam, low_gain_inds, ecef_r, pth, rcs_data = pdatas[tind]
                             
                         nrows, ncols = np.shape(pth)
@@ -386,7 +433,7 @@ def main_predict(args, token, debug=False):
                             
                         if (np.sum(SNR_sim) > 0): # added by Liliana
                             matches[tind], pmetas[tind], pmae[tind] = matching_function( # abb by Lili
-                                data, SNR_sim, pths_off_angle, args)
+                                data, SNR_sim, pths_off_angle, min_snr)
                         else:
                             matches[tind] = float('NaN')
                             pmetas[tind] = [float('NaN'), float('NaN')]
@@ -400,7 +447,7 @@ def main_predict(args, token, debug=False):
                         best_mae = float('NaN')
                     else:
                         best_mae = np.nanargmin(pmae)
-                    if debug:
+                    if verbose:
                         print(best_mae)
                     if np.isnan(best_mae):
                         pass
@@ -427,20 +474,20 @@ def main_predict(args, token, debug=False):
                         axes[0, 0].set_ylabel('Distance [1]')
                         mdate = Time(data.epoch + data.t[snridmax], format='unix', scale='utc').iso
                         fig.suptitle(f'Jitter search using matching function: t0 = {mdate}')
-                        fig.savefig(results_folder / f'correlated_jitter_search.{args.format}')
+                        fig.savefig(results_folder / f'correlated_jitter_search.{fileformat}')
                         plt.close(fig)
 
                         fig, ax = plt.subplots(figsize=(12, 8))
                         ax.plot(data.t, np.linalg.norm(ecef_r, axis=0))
                         ax.plot(data.t, data.range)
                         ax.plot(data.t[snridmax], r, 'or')
-                        fig.savefig(results_folder / f'correlated_pass_range_match.{args.format}')
+                        fig.savefig(results_folder / f'correlated_pass_range_match.{fileformat}')
                         plt.close(fig)
 
                         fig, ax = plt.subplots(figsize=(12, 8))
                         ax.plot(pth[0, :], pth[1, :], '-w')
                         pyant.plotting.gain_heatmap(radar.tx[0].beam, min_elevation=85.0, ax=ax)
-                        fig.savefig(results_folder / f'correlated_pass_pth_gain.{args.format}')
+                        fig.savefig(results_folder / f'correlated_pass_pth_gain.{fileformat}')
                         plt.close(fig)
                         
                         fig, axes = plt.subplots(2, 2, figsize=(16, 8), sharex=True)
@@ -469,7 +516,7 @@ def main_predict(args, token, debug=False):
                         title_date = results_folder.stem.split('_')
                         mdate = Time(data.epoch, format='unix', scale='utc').iso
                         fig.suptitle(f'{title_date[0].upper()} - {mdate}: NORAD-ID = {norad}. BM = {best_match}, BMAE = {best_mae}')
-                        fig.savefig(results_folder / f'correlated_pass_snr_match.{args.format}')
+                        fig.savefig(results_folder / f'correlated_pass_snr_match.{fileformat}')
                         plt.close(fig)
 
                         offset_angle = pyant.coordinates.vector_angle(pth[:, snridmax],
@@ -516,6 +563,10 @@ def main_predict(args, token, debug=False):
         pbar.update(1)
     pbar.close()
 
+
+###################################################################
+# CLI
+###################################################################
 
 def main(input_args=None):
     parser = argparse.ArgumentParser(description='Estimate RCS \
@@ -567,7 +618,7 @@ def main(input_args=None):
         default='png',
         help='Plot format',
     )
-
+    
     credentials = 'discos_credentials.txt'
     proc = subprocess.Popen("sed -n '1p' "+credentials, stdout=subprocess.PIPE, shell=True)
     token = proc.stdout.read()
@@ -578,8 +629,25 @@ def main(input_args=None):
     else:
         args = parser.parse_args(input_args)
 
-    main_predict(args, token)
+    # rcs estimate
+    rcs_estimator(
+        args.radar,
+        args.catalog,
+        args.correlation_events,
+        args.correlation_data,
+        args.output,
+        token,
+        jitter_width=args.jitter_width,
+        min_gain=args.min_gain,
+        min_snr=args.min_snr,
+        fileformat=args.format,
+        verbose=args.v
+    )
 
+
+###################################################################
+# MAIN
+###################################################################
 
 if __name__ == '__main__':
     main()
