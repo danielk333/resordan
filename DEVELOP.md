@@ -72,3 +72,9 @@ To run specific test function within TestCase
 ```bash
 pytest tests/test_myfile.py::MyTest::test_myfunction
 ```
+
+To run interactive tests
+```bash
+pytest -m interactive tests/test_myfile.py
+```
+
