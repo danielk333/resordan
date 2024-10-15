@@ -10,21 +10,22 @@ from scipy.special import j1 as besselj1
 from scipy.special import struve
 import matplotlib.pyplot as plt
 
-def getClosedCylinderRCS(radius, # radius [m]
-                         height, # Cylinder height [m]
-                         frequency, # Wave frequency [Hz]
-                         azimuth, # Azimuth angle [-pi<rad<pi]
-                         elevation): # Elevation angle [-pi/2<=rad<=pi/2]
+
+def getClosedCylinderRCS(radius,  # radius [m]
+                         height,  # Cylinder height [m]
+                         frequency,  # Wave frequency [Hz]
+                         azimuth,  # Azimuth angle [-pi<rad<pi]
+                         elevation):  # Elevation angle [-pi/2<=rad<=pi/2]
     '''
         Calculates the radar cross-section for a circular cylinder defined by 
         its radii and height, the wave frequency and elevation angle. Note 
         that the cylinder is closed and has end plates.
     '''
-    eps = 1e-6 # small number
-    phir = np.asfarray(azimuth) # azimuth angle [rad]
-    thetar = (elevation + np.pi/2) # aspect angle [rad]
-    c = 2.99792458e8 # speed of light in vacuum [m/s]
-    lamda = c / frequency # wavelength
+    eps = 1e-6  # small number
+    phir = np.asfarray(azimuth)  # azimuth angle [rad]
+    thetar = (elevation + np.pi/2)  # aspect angle [rad]
+    c = 2.99792458e8  # speed of light in vacuum [m/s]
+    lamda = c / frequency  # wavelength
     k = 2 * np.pi / lamda
     r = radius
     h = height
@@ -35,12 +36,12 @@ def getClosedCylinderRCS(radius, # radius [m]
     if Naz == Nel:
         rcs = np.zeros(Naz)
     else:
-        rcs = np.zeros((Naz,Nel))
+        rcs = np.zeros((Naz, Nel))
 
     if Naz == 1:
-        phir = np.reshape(phir,(1))
+        phir = np.reshape(phir, (1))
     if Nel == 1:
-        thetar = np.reshape(thetar,(1))
+        thetar = np.reshape(thetar, (1))
 
     for idy in range(Nel):
         theta = thetar[idy]
@@ -50,14 +51,14 @@ def getClosedCylinderRCS(radius, # radius [m]
         A = besselj1(arg)
         B = 2 / np.pi - struve(1, arg)
         # When theta -> pi/2, this ratio converges to (kh)**2
-        ratio = np.where(abs(cth) > eps, \
+        ratio = np.where(abs(cth) > eps,
                          (np.sin(k*h*cth)/cth)**2, (k*h)**2)
         if Naz == Nel:
             rcs[idy] = np.pi * r**2 * sth**2 * ratio * (A**2 + B**2)
         else:
             for idx in range(Naz):
-                rcs[idx,idy] = np.pi * r**2 * sth**2 * ratio * (A**2 + B**2)
-    
+                rcs[idx, idy] = np.pi * r**2 * sth**2 * ratio * (A**2 + B**2)
+
     return rcs
 
 #
@@ -70,15 +71,16 @@ def getClosedCylinderRCS(radius, # radius [m]
 # angles that originate from the end plates.
 #
 
-if __name__=="__main__":
-    
-    vhf = 2.24e8 # EISCAT VHF radar frequency [Hz]
-    uhf = 9.30e8 # EISCAT UHF radar frequency [Hz]
+
+if __name__ == "__main__":
+
+    vhf = 2.24e8  # EISCAT VHF radar frequency [Hz]
+    uhf = 9.30e8  # EISCAT UHF radar frequency [Hz]
     fc = uhf
     r = 1.0
     h = 1.0
 
-    #el = np.asfarray([-90,-60,-45,-30,0,30,45,60,90])
+    # el = np.asfarray([-90,-60,-45,-30,0,30,45,60,90])
     el = np.deg2rad(np.asfarray(list(range(-90,90))))
 
     rcs = getClosedCylinderRCS(r,h,fc,0,el)
@@ -90,7 +92,7 @@ if __name__=="__main__":
     rcs = getClosedCylinderRCS(r,h,fc,0,el)
     rcs_dB = 10*np.log10(rcs+1e-5)
     plt.plot(el.flatten(),rcs_dB.flatten(),'k-')
-    
+
     h = 2.0
     rcs = getClosedCylinderRCS(r,h,fc,0,el)
     rcs_dB = 10*np.log10(rcs+1e-5)
