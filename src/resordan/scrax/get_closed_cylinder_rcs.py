@@ -81,11 +81,11 @@ if __name__ == "__main__":
     h = 1.0
 
     # el = np.asfarray([-90,-60,-45,-30,0,30,45,60,90])
-    el = np.deg2rad(np.asfarray(list(range(-90,90))))
+    el = np.deg2rad(np.asfarray(list(range(-90, 90))))
 
-    rcs = getClosedCylinderRCS(r,h,fc,0,el)
+    rcs = getClosedCylinderRCS(r, h, fc, 0, el)
     rcs_dB = 10*np.log10(rcs+1e-5)
-    plt.plot(el.flatten(),rcs_dB.flatten())
+    plt.plot(el.flatten(), rcs_dB.flatten())
 
 """
     h = 1.0
