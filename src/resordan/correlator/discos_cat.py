@@ -44,8 +44,14 @@ def get_discos_objects(object_ids, token):
     response = requests.get(
         f'{URL}/api/objects',
         headers={'Authorization': f'Bearer {token}','DiscosWeb-Api-Version': '2'},
-        params={'filter': f'in(satno,({object_ids_str}))'},
+        #params={'filter': f'in(satno,({object_ids_str}))','page[size]':100, 'page[number]':4},
+        params={'filter': f'in(satno,({object_ids_str}))','page[size]':100},
         verify=False)
-    doc = response.json()    
-    return [(item['id'], item_as_tuple(item)) for item in doc['data']]
+    
+    doc = response.json()
+
+    data = {item['attributes']['satno']:item_as_tuple(item) for item in doc['data']} 
+    #[(str(item['attributes']['satno']), item_as_tuple(item)) for item in doc['data']]
+
+    return data
 

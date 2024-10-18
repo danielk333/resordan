@@ -3,17 +3,15 @@
 from pathlib import Path
 import pickle
 import argparse
-import os
 import scipy
 import similaritymeasures
 import subprocess
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-from astropy.time import Time, TimeDelta
+from astropy.time import Time
 from tqdm import tqdm
-from datetime import datetime
+from datetime import datetime, UTC
 import h5py
 
 import sorts
@@ -42,7 +40,10 @@ except ImportError:
 ###################################################################
 
 def offaxis_weighting(angles):
-    '''Weight for offaxis angle, normalized for this set of angles'''
+    """
+    Weight for offaxis angle, normalized for this set of angles
+    """
+
     if angles.size == 0:
         return np.ones_like(angles)
     w = angles.copy()
@@ -53,9 +54,8 @@ def offaxis_weighting(angles):
 
 
 def matching_function(data, SNR_sim, off_angles, min_snr, verbose=False):
-
     """
-    TODO: docstring
+    Matching between the simulated and measured SNR time series
     """
 
     # Filter measurnments
@@ -66,7 +66,8 @@ def matching_function(data, SNR_sim, off_angles, min_snr, verbose=False):
     if np.all(np.isnan(_SNR_sim)):
         match = np.nan
         meta = [np.nan, np.nan]
-        return match, meta
+        mae = np.nan
+        return match, meta, mae
 
     max_sndb_x = np.nanmax(data.snr)
     max_sndb_y = np.log10(np.nanmax(_SNR_sim))*10
@@ -113,7 +114,7 @@ def matching_function(data, SNR_sim, off_angles, min_snr, verbose=False):
         np.logical_or(snsdb <= sns_lim, np.logical_not(idx_y)),
         idx_x,
     ])
-
+    
     dhit = np.nan
     dcut = np.nan
     dmiss = np.nan
@@ -182,8 +183,9 @@ def snr2rcs(
         ):
 
     """
-    TODO: docstring
+    Use the radar equation to compute RCS values from SNR data
     """
+
     rx_noise = scipy.constants.k*rx_noise_temp*bandwidth
     power = snr*rx_noise/radar_albedo
 
@@ -194,10 +196,11 @@ def snr2rcs(
 
 def generate_prediction(data, t, obj, radar, min_gain):
     """
-    TODO: docstring
+    Simulate the diamer and SNR values for the poiniting direction of the radar beam
+    Compute the RCS values
     """
 
-    states_ecef = obj.get_state(t) # /Users/licr/Documents/Snr2rcs/SORTS/sorts/space_object.py and /Users/licr/Documents/Snr2rcs/SORTS/sorts/propagator/pysgp4.py
+    states_ecef = obj.get_state(t) # /sorts/space_object.py & /sorts/propagator/pysgp4.py
     ecef_r = states_ecef[:3, :] - radar.tx[0].ecef[:, None]
 
     local_pos = sorts.frames.ecef_to_enu(
@@ -205,11 +208,11 @@ def generate_prediction(data, t, obj, radar, min_gain):
         radar.tx[0].lon, 
         radar.tx[0].alt, 
         ecef_r,
-        degrees=True, # it was radians=False. Changed by Liliana
+        degrees=True,
     )
 
     pth = local_pos/np.linalg.norm(local_pos, axis=0)
-    G_pth = radar.tx[0].beam.gain(pth) # /Users/licr/anaconda3/envs/snr2rcs/lib/python3.11/site-packages/pyant/beams/eiscat_uhf.py
+    G_pth = radar.tx[0].beam.gain(pth) # $ENV/site-packages/pyant/beams/eiscat_uhf.py
     G_pth = np.squeeze(G_pth)
     G_pth_db = 10*np.log10(G_pth)
 
@@ -263,6 +266,10 @@ def generate_prediction(data, t, obj, radar, min_gain):
     
     
 def updated_tle(line1,line2,data,radar):
+    """
+    Update TLE information of objects in catalogue
+    """
+
     line1 = (line1.astype(str))[0]
     line2 = (line2.astype(str))[0]
 
@@ -276,28 +283,137 @@ def updated_tle(line1,line2,data,radar):
 
     return new_tle
 
+def plot_estimator_results(
+        data, 
+        norad, 
+        radar, 
+        t_jitter, 
+        matches, 
+        bmae, 
+        pmae, 
+        SNR_sim, 
+        snridmax, 
+        ecef_r, 
+        r, 
+        diam, 
+        pth, 
+        fileformat, 
+        results_folder
+    ):
+    """
+    Plot parameters that resulted from RCS_ESTIMATOR
+    """
 
+    alog = 10**(data.snr/10)
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.plot(pth[0, :], pth[1, :], '-w')
+    pyant.plotting.gain_heatmap(radar.tx[0].beam, min_elevation=85.0, ax=ax)
+    fig.savefig(results_folder / f'correlated_pass_pth_gain.{fileformat}')
+    plt.close(fig)
+        
+    fig, axes = plt.subplots(2, 2, figsize=(16, 8))
+    axes[0, 0].plot(t_jitter, matches, '.k')
+    axes[0, 0].plot(t_jitter, pmae,'k')
+    if bmae == bmae:
+        axes[0, 0].plot(t_jitter[bmae], pmae[bmae], 'or')
+    axes[0, 0].set_xlabel('Jitter [s]')
+    axes[0, 0].set_ylabel('Distance [1]')
+    axes[0, 1].plot(data.t, np.log10(diam*1e2))
+    axes[0, 1].set_ylabel('Diameter [log10(cm)]')
+    interval = 0.2
+    d_peak = diam[snridmax]*1e2
+    if not (np.isnan(d_peak) or np.isinf(d_peak)):
+        logd_peak = np.log10(d_peak)
+        axes[0, 1].set_ylim(logd_peak*(1 - interval), logd_peak*(1 + interval))
+    axes[1, 0].plot(data.t, np.linalg.norm(ecef_r, axis=0)/1e3)
+    axes[1, 0].plot(data.t, data.range/1e3)
+    axes[1, 0].plot(data.t[snridmax], r/1e3, 'or')
+    axes[1, 0].set_ylabel('range [km]')
+    axes[1, 0].set_xlabel('Time [s]')
+    axes[1, 1].plot(data.t, 10*np.log10(SNR_sim/np.max(SNR_sim)), label='Estimated')
+    axes[1, 1].plot(data.t, 10*np.log10(alog/np.nanmax(alog)), 'x', label='Measured')
+    axes[1, 1].plot(data.t, 10*np.log10(SNR_sim/np.max(SNR_sim)), '+b')
+    axes[1, 1].legend()
+    axes[1, 1].set_xlabel('Time [s]')
+    axes[1, 1].set_ylabel('Normalized SNR [dB]')
+    title_date = results_folder.stem.split('_')
+    mdate = Time(data.epoch, format='unix', scale='utc').iso
+    fig.suptitle(f'{title_date[0].upper()} - {mdate}: NORAD-ID = {norad}')
+    fig.savefig(results_folder / f'correlated_pass_snr_match.{fileformat}')
+    plt.close(fig)
+
+def save_estimator_results(
+        discos_map, 
+        norad, 
+        SNR_sim, 
+        diam_sim, 
+        G_pth, 
+        pth, 
+        rcs_data, 
+        data, 
+        results_folder
+    ):
+    """
+    Save measured and simulated time series for each object with 
+    their respective geometries and shapres retrieved from DISCOS
+    """
+
+    # discos object
+    _catid = norad
+    discos_tup = discos_map[_catid]
+
+    nameo, satno, oClass, mission, mass, shape, width, height, depth, diam, span, xsMax, xsMin, xsAvg = discos_tup
+        
+    summary_data = dict(
+                SNR_sim = SNR_sim,
+                diam_sim = diam_sim,
+                gain_sim = G_pth,
+                pth_sim = pth,
+                #measurement_id = meas_id,
+                #object_id = obj_id,
+                #offset_angle = offset_angle,
+                catid = satno,
+                rcs_data = rcs_data,
+                snr_data = data.snr,
+                timearray = data.t,
+                nameo = nameo,
+                objectClass = oClass,
+                mission = mission,
+                mass = mass,
+                shape = shape,
+                width = width,
+                height = height,
+                depth = depth,
+                diameter = diam,
+                span = span,
+                xSectMax = xsMax,
+                xSectMin = xsMin,
+                xSectAvg = xsAvg,
+    )
+        
+    with open(results_folder / f'correlated_snr_prediction.pickle', 'wb') as fh:
+        pickle.dump(summary_data, fh)
 
 ###################################################################
 # RCS ESTIMATE
 ###################################################################
 
 def rcs_estimator(
-    radarid, 
-    catalog,
-    correlation_events, 
-    correlation_data,
-    output,
-    token,
-    jitter_width=1.5,
-    min_gain=10.0,
-    min_snr=5.0,
-    fileformat='png',
-    verbose=False):
-
-
+        radarid, 
+        catalog,
+        correlation_events, 
+        correlation_data,
+        output,
+        token,
+        jitter_width=1.5,
+        min_gain=10.0,
+        min_snr=5.0,
+        fileformat='png',
+        verbose=False
+    ):
     """
-    Estimate Radar Cross Section
+    Compute Radar Cross Section and estinate SNR and diameter from measured SNR 
  
     Params
     ------
@@ -337,12 +453,6 @@ def rcs_estimator(
     pop = sorts.population.tle_catalog(tle_pth, cartesian=False)
     pop.unique()
 
-    pbar = tqdm(
-        total=len(corr_events),
-        position=0,
-        desc='Predicting events',
-    )
-
     for corr_event in corr_events:
         corrdata_filename = corr_event.name.split('.')[0] + '.h5'
         if verbose:
@@ -353,246 +463,142 @@ def rcs_estimator(
             indecies = ds['matched_object_index'][()][0, :]
             measurnment_id = ds['observation_index'][()]
             time_id = ds['matched_object_time'][()]
-            indecies = indecies[measurnment_id]
-            measurnment_id = np.arange(len(measurnment_id))
+            selected = ds['correlated'][()]
+            indecies = indecies[measurnment_id] # sort according to detection
             time_id = time_id[measurnment_id]
+            selected = selected[measurnment_id]
+            measurnment_id = np.arange(len(measurnment_id))
             
         with open(str(corr_event), 'rb') as fip:
             h_det = pickle.load(fip)
 
-
-        # need to create a list of catids
-
-        def as_catid(events):
-            data = events
-            eepoch = events.epoch
-            snrs = events.snr
-            snridmax = np.nanargmax(snrs)
-            ts = eepoch + events.t
-            t = ts[snridmax] # time at the max SNR
-            
-            select_id = np.where(time_id == t)
-            select_id = select_id[0]
-
-            obj_id = indecies[select_id][0]
-
-            return pop.data['oid'][obj_id]
-
-
-        catids = list(set([as_catid(events) for events in h_det.events]))
-        discos_map = {str(catid):tup for catid,tup in get_discos_objects(catids, token)}
-
+        # Create a list of catids
+        norads = []
         for events in h_det.events:
-
             data = events
             eepoch = events.epoch
             snrs = events.snr
             snridmax = np.nanargmax(snrs)
             ts = eepoch + events.t
-            rs = events.range
-            vs = events.range_rate
-            t = ts[snridmax] # time at the max SNR
-            r = rs[snridmax] # in m, one way
-            v = vs[snridmax] # in m/s
-            az = events.pointing[0][0] # assuming that all values are the same
-            ele = events.pointing[0][1]
-            
+            t = ts[snridmax] # time at the max SNR  
             select_id = np.where(time_id == t)
             select_id = select_id[0]
-    
-            meas_id = measurnment_id[select_id][0]
             obj_id = indecies[select_id][0]
-            ename = radarid + '_' + datetime.utcfromtimestamp(eepoch).strftime('%Y%m%d_%H%M%S_%f')
+            norads.append(pop.data['oid'][obj_id])
 
-            obj = pop.get_object(obj_id)
-            norad = pop.data['oid'][obj_id]
+        norads = np.array(norads)
+        catids = norads[selected] # succesful correlations. Distance < thrreshold
+        discos_map = get_discos_objects(catids, token)
 
-            if verbose:
-                print('Correlated TLE object for :')
-                print(f' - measurement_id: {meas_id}')
-                print(f' - object_id: {obj_id}')
-                print(f' - CAT ID: {norad}')
-                print(f' - event: {ename}')
+        pbar = tqdm(
+            total=len(catids),
+            position=0,
+            desc='Predicting events',
+        )
 
-            if norad < 81000:
-                results_folder = output_pth / ename
-                results_folder.mkdir(exist_ok=True)
+        for jj, events in enumerate(h_det.events):
+            if selected[jj]:
+                data = events
+                eepoch = events.epoch
+                snrs = events.snr
+                snridmax = np.nanargmax(snrs)
+                ts = eepoch + events.t
+                rs = events.range
+                t = ts[snridmax] # time at the max SNR
+                r = rs[snridmax] # in m, one way
+                az = events.pointing[0][0] # assuming that all values are the same
+                ele = events.pointing[0][1]
+                
+                select_id = np.where(time_id == t)
+                select_id = select_id[0]
         
-                radar.tx[0].beam.sph_point(azimuth = az, elevation = ele)
-                
-                ##==================
-                ## TLE update # The update does not produce simulations
-                ##==================
-                #line1 = pop.data[np.where(pop.data['oid'] == norad)]['line1']
-                #line2 = pop.data[np.where(pop.data['oid'] == norad)]['line2']
-                #print(line1)
-                #print(line2)
-                #new_tle = updated_tle(line1,line2,data,radarid) # corr_events or data
-                #print(new_tle)
-                #new_pop = sorts.population.tle_catalog([(new_tle[0],new_tle[1])], cartesian=False)
-                #obj = new_pop.get_object(0)
-                ##==================
-                
-                obj.out_frame = 'ITRS'
+                meas_id = measurnment_id[select_id][0]
+                obj_id = indecies[select_id][0]
+                toutc = datetime.fromtimestamp(eepoch, UTC).strftime('%Y%m%d_%H%M%S_%f')
+                ename = radarid + '_' + toutc
 
-                t = Time(t, format='unix', scale='utc')
-                dt = (t - obj.epoch).sec # unix time - mjd time format. It works when using astropy
-                t_vec = data.t - data.t[snridmax]
+                obj = pop.get_object(obj_id)
+                norad = pop.data['oid'][obj_id]
 
-                matches = np.empty_like(t_jitter)
-                pdatas = [None]*len(t_jitter)
-                pmetas = [None]*len(t_jitter)
-                pmae = [None]*len(t_jitter)
-                
-                for tind in range(len(t_jitter)):
-                    _t = t_vec + dt + t_jitter[tind]
-                    pdatas[tind] = generate_prediction(data, _t, obj, radar, min_gain)
-                    SNR_sim, G_pth, diam, low_gain_inds, ecef_r, pth, rcs_data = pdatas[tind]
-                        
-                    nrows, ncols = np.shape(pth)
-                    pths_off_angle = pyant.coordinates.vector_angle(
-                        np.repeat(radar.tx[0].beam.pointing, ncols, axis=1),
-                        pth,
-                        degrees=True
-                    )
-                        
-                    if (np.sum(SNR_sim) > 0): # added by Liliana
-                        matches[tind], pmetas[tind], pmae[tind] = matching_function( # abb by Lili
-                            data, SNR_sim, pths_off_angle, min_snr)
-                    else:
-                        matches[tind] = float('NaN')
-                        pmetas[tind] = [float('NaN'), float('NaN')]
-                        pmae[tind] = float('NaN')
-                        
-                if np.isnan(matches).all():
-                    best_match = float('NaN')
-                else:
-                    best_match = np.nanargmin(matches)
-                if np.isnan(pmae).all():
-                    best_mae = float('NaN')
-                else:
-                    best_mae = np.nanargmin(pmae)
                 if verbose:
-                    print(best_mae)
-                if np.isnan(best_mae):
-                    pass
-                else:
-                    SNR_sim, G_pth, diam, low_gain_inds, ecef_r, pth, rcs_data = pdatas[best_mae]
+                    print('Correlated TLE object for :')
+                    print(f' - measurement_id: {meas_id}')
+                    print(f' - object_id: {obj_id}')
+                    print(f' - CAT ID: {norad}')
+                    print(f' - event: {ename}')
+
+                if norad < 81000:
+                    results_folder = output_pth / ename
+                    results_folder.mkdir(exist_ok=True)
+            
+                    radar.tx[0].beam.sph_point(azimuth = az, elevation = ele)
                     
-                    alog = 10**(data.snr/10)
+                    ##==================
+                    ## TLE update # The update does not produce simulations
+                    ##==================
+                    #line1 = pop.data[np.where(pop.data['oid'] == norad)]['line1']
+                    #line2 = pop.data[np.where(pop.data['oid'] == norad)]['line2']
+                    #print(line1)
+                    #print(line2)
+                    #new_tle = updated_tle(line1,line2,data,radarid) # corr_event or data
+                    #print(new_tle)
+                    #new_pop = sorts.population.tle_catalog([(new_tle[0],new_tle[1])], cartesian=False)
+                    #obj = new_pop.get_object(0)
+                    ##==================
+                    
+                    obj.out_frame = 'ITRS'
+
+                    t = Time(t, format='unix', scale='utc')
+                    dt = (t - obj.epoch).sec # unix time - mjd. format. Use astropy
+                    t_vec = data.t - data.t[snridmax]
+
+                    matches = np.empty_like(t_jitter)
+                    pdatas = [None]*len(t_jitter)
+                    pmetas = [None]*len(t_jitter)
+                    pmae = [None]*len(t_jitter)
+                    
+                    for tind in range(len(t_jitter)):
+                        _t = t_vec + dt + t_jitter[tind]
+                        pdatas[tind] = generate_prediction(data, _t, obj, radar, min_gain)
+                        SNR_sim, G_pth, diam, LG_ind, ecef_r, pth, rcs_data = pdatas[tind]
                             
-                    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-                    axes[0, 0].plot(t_jitter, matches)
-                    if best_mae == best_mae:
-                        axes[0, 0].plot(t_jitter[best_mae], pmae[best_mae], 'or')
-                    axes[1, 0].plot(t_jitter, [x[0] for x in pmetas])
-                    axes[0, 1].plot(t_jitter, [x[1] for x in pmetas])
-                    axes[1, 1].plot(t_vec, 10*np.log10(SNR_sim/np.max(SNR_sim)),'k')
-                    axes[1, 1].plot(t_vec, 10*np.log10(alog/np.max(alog)),'r')
-                    axes[1, 1].set_xlabel('Time [s]')
-                    axes[1, 1].set_ylabel('SNR [dB]')
-                    axes[1, 0].set_xlabel('Jitter [s]')
-                    axes[1, 0].set_ylabel('Cut weight [1]')
-                    axes[0, 1].set_xlabel('Jitter [s]')
-                    axes[0, 1].set_ylabel('Miss weight [1]')
-                    axes[0, 0].set_xlabel('Jitter [s]')
-                    axes[0, 0].set_ylabel('Distance [1]')
-                    mdate = Time(data.epoch + data.t[snridmax], format='unix', scale='utc').iso
-                    fig.suptitle(f'Jitter search using matching function: t0 = {mdate}')
-                    fig.savefig(results_folder / f'correlated_jitter_search.{fileformat}')
-                    plt.close(fig)
-
-                    fig, ax = plt.subplots(figsize=(12, 8))
-                    ax.plot(data.t, np.linalg.norm(ecef_r, axis=0))
-                    ax.plot(data.t, data.range)
-                    ax.plot(data.t[snridmax], r, 'or')
-                    fig.savefig(results_folder / f'correlated_pass_range_match.{fileformat}')
-                    plt.close(fig)
-
-                    fig, ax = plt.subplots(figsize=(12, 8))
-                    ax.plot(pth[0, :], pth[1, :], '-w')
-                    pyant.plotting.gain_heatmap(radar.tx[0].beam, min_elevation=85.0, ax=ax)
-                    fig.savefig(results_folder / f'correlated_pass_pth_gain.{fileformat}')
-                    plt.close(fig)
-                    
-                    fig, axes = plt.subplots(2, 2, figsize=(16, 8), sharex=True)
-                    axes[0, 0].plot(data.t, diam*1e2)
-                    axes[0, 0].set_ylabel('Diameter [cm]')
-                    axes[0, 1].plot(data.t, np.log10(diam*1e2))
-                    axes[0, 1].set_ylabel('Diameter [log10(cm)]')
-                    axes[1, 0].set_xlabel('Time [s]')
-                    interval = 0.2
-                    d_peak = diam[snridmax]*1e2
-                    if not (np.isnan(d_peak) or np.isinf(d_peak)):
-                        logd_peak = np.log10(d_peak)
-                        axes[0, 0].set_ylim(d_peak*(1 - interval), d_peak*(1 + interval))
-                        axes[0, 1].set_ylim(logd_peak*(1 - interval), logd_peak*(1 + interval))
-
-                    axes[1, 0].plot(data.t, SNR_sim/np.max(SNR_sim), label='Estimated')
-                    axes[1, 0].plot(data.t, alog/np.nanmax(alog), 'x', label='Measured')
-                    axes[1, 0].plot(data.t, SNR_sim/np.max(SNR_sim),'+b')
-                    axes[1, 1].plot(data.t, 10*np.log10(SNR_sim/np.max(SNR_sim)), label='Estimated')
-                    axes[1, 1].plot(data.t, 10*np.log10(alog/np.nanmax(alog)), 'x', label='Measured')
-                    axes[1, 1].plot(data.t, 10*np.log10(SNR_sim/np.max(SNR_sim)), '+b')
-                    axes[1, 0].legend()
-                    axes[1, 1].set_xlabel('Time [s]')
-                    axes[1, 0].set_ylabel('Normalized SNR [1]')
-                    axes[1, 1].set_ylabel('Normalized SNR [dB]')
-                    title_date = results_folder.stem.split('_')
-                    mdate = Time(data.epoch, format='unix', scale='utc').iso
-                    fig.suptitle(f'{title_date[0].upper()} - {mdate}: NORAD-ID = {norad}. BM = {best_match}, BMAE = {best_mae}')
-                    fig.savefig(results_folder / f'correlated_pass_snr_match.{fileformat}')
-                    plt.close(fig)
-
-                    offset_angle = pyant.coordinates.vector_angle(pth[:, snridmax],
-                                    radar.tx[0].beam.pointing,
-                                    degrees=True
-                    )
-                    
-                    SNR_sim, G_pth, diam, low_gain_inds, ecef_r, pth, rcs_data = pdatas[best_mae]
-
-
-                    # discos object
-                    _catid = str(norad)
-                    if _catid not in discos_map:
-                        continue
-                    discos_tup = discos_map[_catid]       
-                    nameo, satno, objectClass, mission, mass, shape, width, height, depth, diameter, span, xSectMax, xSectMin, xSectAvg = discos_tup
+                        nrows, ncols = np.shape(pth)
+                        pths_off_angle = pyant.coordinates.vector_angle(
+                            np.repeat(radar.tx[0].beam.pointing, ncols, axis=1),
+                            pth,
+                            degrees=True
+                        )
                         
-                    summary_data = dict(
-                            SNR_sim = SNR_sim,
-                            diam_sim = diam,
-                            gain_sim = G_pth,
-                            pth_sim = pth,
-                            #measurement_id = meas_id,
-                            #object_id = obj_id,
-                            #offset_angle = offset_angle,
-                            catid = norad,
-                            rcs_data = rcs_data,
-                            snr_data = data.snr,
-                            timearray = data.t,
-                            nameo = nameo,
-                            satno = satno,
-                            objectClass = objectClass,
-                            mission = mission,
-                            mass = mass,
-                            shape = shape,
-                            width = width,
-                            height = height,
-                            depth = depth,
-                            diameter = diameter,
-                            span = span,
-                            xSectMax = xSectMax,
-                            xSectMin = xSectMin,
-                            xSectAvg = xSectAvg,
-                    )
+                        matches[tind], pmetas[tind], pmae[tind] = matching_function( 
+                                data, SNR_sim, pths_off_angle, min_snr)
+
+                    #best_match = np.nanargmin(matches)
+                    best_mae = np.nanargmin(pmae)
+                    if verbose:
+                        print(best_mae)
+
+                    SNR_sim, G_pth, diam, LG_ind, ecef_r, pth, rcs_data = pdatas[best_mae]
                     
-                    with open(results_folder / f'correlated_snr_prediction.pickle', 'wb') as fh:
-                        pickle.dump(summary_data, fh)
-            else:
-                'At the time of the TLE (date), the object was to be assigned'
-        pbar.update(1)
-    pbar.close()
+                    # Currently, the lines commented below are not used
+                    #offset_angle = pyant.coordinates.vector_angle(pth[:, snridmax],
+                    #                radar.tx[0].beam.pointing,
+                    #                degrees=True
+                    #)
+
+                    plot_estimator_results(data, norad, radar, t_jitter, matches,
+                        best_mae, pmae, SNR_sim, snridmax, ecef_r, r, diam, pth,
+                        fileformat, results_folder
+                    )
+
+                    save_estimator_results(
+                        discos_map, norad, SNR_sim, diam, G_pth, pth, 
+                        rcs_data, data, results_folder
+                    )
+
+                else:
+                    print('At the time of the TLE (date), the object was to be assigned')
+            pbar.update(1)
+        pbar.close()
 
 
 ###################################################################
