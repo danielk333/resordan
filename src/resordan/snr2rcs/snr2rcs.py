@@ -190,6 +190,23 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
         else:
             CORRELATE_PARAMS[key] = get_value(cfg, 'CORRELATE', key)
 
+    # TODO - from beam_correlator import radar_sd_correlator    
+    """
+    radar_sd_correlator(
+        args.radar,
+        args.catalog,
+        args.input,
+        args.output,
+        args.c,
+        args.std,
+        args.jitter,
+        args.save-states,
+        rangeratescaling= args.range-rate-scaling,
+        rangescaling=args.range-scaling,
+        targetepoch=args.target-epoch,
+        )
+    """
+
     args = [
         "rcorrelate", "eiscat_uhf",
         str(tle_file),

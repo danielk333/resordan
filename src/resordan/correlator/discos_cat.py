@@ -49,9 +49,11 @@ def get_discos_objects(object_ids, token):
     response = requests.get(
         f'{URL}/api/objects',
         headers={'Authorization': f'Bearer {token}', 'DiscosWeb-Api-Version': '2'},
-        # params={'filter': f'in(satno,({object_ids_str}))','page[size]':100, 'page[number]':4},
         params={'filter': f'in(satno,({object_ids_str}))', 'page[size]': 100},
         verify=False)
+
+    # TODO - check what happens if the expected result is larger than the page number
+    # TODO - check that you indeed get all the expected results 
 
     doc = response.json()
 

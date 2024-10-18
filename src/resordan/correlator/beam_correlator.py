@@ -435,6 +435,7 @@ def population_analysis(
 
     return select, not_select
 
+
 def radar_sd_correlator(
         radarid,
         catalog,
@@ -446,35 +447,11 @@ def radar_sd_correlator(
         savestates,
         rangeratescaling=0.2,
         rangescaling=1.0,
-        targetepoch=None
-    ):
-            
-    #        args.radar,
-    #    args.catalog,
-    #    args.input,
-    #    args.output,
-    #    args.c,
-    #    args.std,
-    #    args.jitter,
-    #    args.save-states,
-    #    rangeratescaling= args.range-rate-scaling,
-    #    rangescaling=args.range-scaling,
-    #    targetepoch=args.target-epoch,
+        targetepoch=None):
+
     """
-    TODO : This function should be refactored so that the functionality is available
-    as a named function, so that it is available for import
-    Consider also letting small inputs such as catalog and observations be passed as parameter,
-    instead 
-    This would also imply changing output of functions that produce catalog and observations,
-    so that results are returned as objects, and not necessarily serialized and written to file.
-
-    Also, core functionality should have a name, and named parameters.
-
-    
-
-
     Compute Radar Cross Section and estinate SNR and diameter from measured SNR 
- 
+
     Params
     ------
 
@@ -526,9 +503,9 @@ def radar_sd_correlator(
         measurements = []
         with open(str(in_file), 'rb') as filer:
             h_det = pickle.load(filer)
-            t = [] # unix time
-            r = [] # meters
-            v = [] # meters/s
+            t = []  # unix time
+            r = []  # meters
+            v = []  # meters/s
             for event in h_det.events:
                 epoch = event.epoch
                 snr = event.snr
@@ -589,12 +566,12 @@ def radar_sd_correlator(
         if output_file.is_file() and not clobber:
             print('Loading correlation data from cache')
             with h5py.File(output_file, "r") as hf:
-                 metric=hf['matched_object_metric']
-                 indices=hf['matched_object_index']
-                 cdat=hf['object_index']
-                 metric=metric[:]
-                 indices=indices[:]
-                 cdat=cdat[:]
+                metric = hf['matched_object_metric']
+                indices = hf['matched_object_index']
+                cdat = hf['object_index']
+                metric = metric[:]
+                indices = indices[:]
+                cdat = cdat[:]
         else:
 
             if comm is not None:
@@ -627,8 +604,7 @@ def radar_sd_correlator(
                 threshold=None, 
                 range_rate_scaling=None, 
                 range_scaling=None, 
-                format=None
-                )
+                format=None)
 
             # Save data
             if comm is None or comm.rank == 0:
