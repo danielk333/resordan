@@ -44,7 +44,7 @@ CORRELATE_PARAM_DEFAULTS = dict(
     stdev = False,
     jitter = False,
     range_rate_scaling = 0.2,
-    range_scaling = 0.1,
+    range_scaling = 1.0,
     save_states = False,
     target_epoch = None
 )
@@ -186,45 +186,10 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
             continue
         if key in ['jitter', 'stdev', 'save_states']:
             CORRELATE_PARAMS[key] = str_to_bool(get_value(cfg, 'CORRELATE', key))
+        elif key in ['range_scaling', 'range_rate_scaling']:
+            CORRELATE_PARAMS[key] = cfg.getfloat('CORRELATE', key)
         else:
             CORRELATE_PARAMS[key] = get_value(cfg, 'CORRELATE', key)
-
-    """
-    args = [
-        "rcorrelate", "eiscat_uhf",
-        str(tle_file),
-        str(events_file.parent),
-        str(correlations_dir),
-    ]
-    if CORRELATE_PARAMS['std']:
-        args.append("--std")
-    if CORRELATE_PARAMS['jitter']:
-        args.append("--jitter")
-    if CORRELATE_PARAMS['save_states']:
-        args.append("--save-states")
-    if clobber:
-        args.append("--clobber")
-    args.extend(['--range-rate-scaling', str(CORRELATE_PARAMS['range_rate_scaling'])])
-    args.extend(['--range-scaling', str(CORRELATE_PARAMS['range_scaling'])])
-
-    proc = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr, text=True)
-    # Wait for the process to complete and get the output
-    stdout, stderr = proc.communicate()
-    """
-
-
-    print(str(tle_file))
-    print(str(events_file.parent))
-    print(str(correlations_dir))
-    print("stdev=", CORRELATE_PARAMS['stdev'])
-    print("jitter=", CORRELATE_PARAMS['jitter'])
-    print("savestates=", CORRELATE_PARAMS['save_states'])
-    print("clobber=", clobber)
-    print("rangeratescaling=", str(CORRELATE_PARAMS['range_rate_scaling']))
-    print("rangescaling=", str(CORRELATE_PARAMS['range_scaling']))
-    print("targetepoch=", CORRELATE_PARAMS['target_epoch'])
-
-
 
     radar_sd_correlator(
         "eiscat_uhf",
@@ -235,8 +200,8 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
         jitter=CORRELATE_PARAMS['jitter'],
         savestates=CORRELATE_PARAMS['save_states'],
         clobber=clobber,
-        rangeratescaling= str(CORRELATE_PARAMS['range_rate_scaling']),
-        rangescaling=str(CORRELATE_PARAMS['range_scaling']),
+        rangeratescaling=CORRELATE_PARAMS['range_rate_scaling'],
+        rangescaling=CORRELATE_PARAMS['range_scaling'],
         targetepoch=CORRELATE_PARAMS['target_epoch']
     )
 

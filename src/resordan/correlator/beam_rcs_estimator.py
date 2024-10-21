@@ -515,7 +515,7 @@ def rcs_estimator(
 
                 meas_id = measurnment_id[select_id][0]
                 obj_id = indecies[select_id][0]
-                toutc = dt.fromtimestamp(eepoch, dt.UTC).strftime('%Y%m%d_%H%M%S_%f')
+                toutc = dt.datetime.fromtimestamp(eepoch, dt.timezone.utc).strftime('%Y%m%d_%H%M%S_%f')
                 ename = radarid + '_' + toutc
 
                 obj = pop.get_object(obj_id)
@@ -552,7 +552,7 @@ def rcs_estimator(
                     obj.out_frame = 'ITRS'
 
                     t = Time(t, format='unix', scale='utc')
-                    dt = (t - obj.epoch).sec  # unix time - mjd. format. Use astropy
+                    delta_t = (t - obj.epoch).sec  # unix time - mjd. format. Use astropy
                     t_vec = data.t - data.t[snridmax]
 
                     matches = np.empty_like(t_jitter)
@@ -561,7 +561,7 @@ def rcs_estimator(
                     pmae = [None]*len(t_jitter)
 
                     for tind in range(len(t_jitter)):
-                        _t = t_vec + dt + t_jitter[tind]
+                        _t = t_vec + delta_t + t_jitter[tind]
                         pdatas[tind] = generate_prediction(data, _t, obj, radar, min_gain)
                         SNR_sim, G_pth, diam, LG_ind, ecef_r, pth, rcs_data = pdatas[tind]
 
