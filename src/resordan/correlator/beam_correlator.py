@@ -199,10 +199,10 @@ def save_correlated_data(out_pth,
         )
 
         # We currently only supply one dat dict to the correlator
-        MSI = 0  # measurement set index
+        msi = 0  # measurement set index
 
         def stacker(x, key):
-            return np.stack([val[MSI][key] for _, val in x.items()], axis=0)
+            return np.stack([val[msi][key] for val in x.values()], axis=0)
 
         scales = [ds_obj_ind, ds_obs_ind]
         _create_ia_var(
@@ -231,10 +231,10 @@ def save_correlated_data(out_pth,
 
         if save_states:
 
-            # TOOD - this probably could be done once, and then the array could be 
+            # TODO - this probably could be done once, and then the array could be 
             # copied if two independent indstancs are needed?
             def as_array(correlated_data):
-                values = [val[MSI]['states'][:3, ...].T for val in correlated_data.values()]
+                values = [val[msi]['states'][:3, ...].T for val in correlated_data.values()]
                 return np.stack(values, axis=0)
 
             _create_ia_var(
@@ -488,10 +488,10 @@ def radar_sd_correlator(
         catalog,
         clustered_events,
         output,
-        clobber,
-        stdev,
-        jitter,
-        savestates,
+        clobber=False,
+        stdev=False,
+        jitter=False,
+        savestates=False,
         rangeratescaling=0.2,
         rangescaling=1.0,
         targetepoch=None):
@@ -749,10 +749,10 @@ def main(input_args=None):
         args.catalog,
         args.input,
         args.output,
-        args.c,
         args.std,
         args.jitter,
         args.save_states,
+        clobber=args.c,
         rangeratescaling= args.range_rate_scaling,
         rangescaling=args.range_scaling,
         targetepoch=args.target_epoch

@@ -1,22 +1,21 @@
 from pathlib import Path
-import sys
 import h5py
-import re
 import datetime as dt
 import tempfile
 import shutil
-import subprocess
 from resordan.clustering import algorithm
 from resordan.data.gmf import GMFDataset
 from resordan.data.events import EventsDataset
 from resordan.correlator.beam_rcs_estimator import rcs_estimator
 from resordan.correlator.space_track_download import fetch_tle
+from resordan.correlator.beam_correlator import radar_sd_correlator
 
 ISO_FMT = '%Y-%m-%dT%H:%M:%S'
 
 ###############################################################
 # CONFIG
 ###############################################################
+
 
 def str_to_bool(value):
     """convert string to bool"""
@@ -62,7 +61,7 @@ PREDICT_PARAM_DEFAULTS = dict(
 # SNR2RCS
 ###############################################################
 
-def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=False):
+def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False):
 
     """
     For a given GMF product, does clustering, correlation and rcs prediction
@@ -190,23 +189,7 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
         else:
             CORRELATE_PARAMS[key] = get_value(cfg, 'CORRELATE', key)
 
-    # TODO - from beam_correlator import radar_sd_correlator    
     """
-    radar_sd_correlator(
-        args.radar,
-        args.catalog,
-        args.input,
-        args.output,
-        args.c,
-        args.std,
-        args.jitter,
-        args.save-states,
-        rangeratescaling= args.range-rate-scaling,
-        rangescaling=args.range-scaling,
-        targetepoch=args.target-epoch,
-        )
-    """
-
     args = [
         "rcorrelate", "eiscat_uhf",
         str(tle_file),
@@ -227,6 +210,21 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
     proc = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr, text=True)
     # Wait for the process to complete and get the output
     stdout, stderr = proc.communicate()
+    """
+
+    radar_sd_correlator(
+        "eiscat_uhf",
+        str(tle_file),
+        str(events_file.parent),
+        str(correlations_dir),
+        std=CORRELATE_PARAMS['std'],
+        jitter=CORRELATE_PARAMS['jitter'],
+        savestates=CORRELATE_PARAMS['save_states'],
+        clobber=clobber,
+        rangeratescaling= str(CORRELATE_PARAMS['range_rate_scaling']),
+        rangescaling=str(CORRELATE_PARAMS['range_scaling']),
+        targetepoch=CORRELATE_PARAMS['target_epoch']
+    )
 
     ###########################################
     # PREDICT
@@ -242,8 +240,6 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
             PREDICT_PARAMS[key] = cfg.getfloat('PREDICT', key)
         if key in ['format']:
             PREDICT_PARAMS[key] = get_value(cfg, 'PREDICT', key)
-
-
 
     # rcs estimate
     rcs_estimator(
