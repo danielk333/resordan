@@ -162,7 +162,7 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
         # get timestamp for start of gmf product
         with h5py.File(gmf_files[0], "r") as f:        
             epoch = float(f['epoch_unix'][()])
-            epoch_dt = dt.datetime.utcfromtimestamp(epoch)
+            epoch_dt = dt.datetime.fromtimestamp(epoch, dt.UTC)
 
         lines = fetch_tle(epoch_dt, st_user, st_passwd)
 
@@ -211,6 +211,20 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
     # Wait for the process to complete and get the output
     stdout, stderr = proc.communicate()
     """
+
+
+    print(str(tle_file))
+    print(str(events_file.parent))
+    print(str(correlations_dir))
+    print("stdev=", CORRELATE_PARAMS['stdev'])
+    print("jitter=", CORRELATE_PARAMS['jitter'])
+    print("savestates=", CORRELATE_PARAMS['save_states'])
+    print("clobber=", clobber)
+    print("rangeratescaling=", str(CORRELATE_PARAMS['range_rate_scaling']))
+    print("rangescaling=", str(CORRELATE_PARAMS['range_scaling']))
+    print("targetepoch=", CORRELATE_PARAMS['target_epoch'])
+
+
 
     radar_sd_correlator(
         "eiscat_uhf",

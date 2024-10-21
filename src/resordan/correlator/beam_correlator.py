@@ -751,7 +751,7 @@ def main(input_args=None):
         args.output,
         stdev=args.stdev,
         jitter=args.jitter,
-        save_states=args.save_states,
+        savestates=args.save_states,
         clobber=args.c,
         rangeratescaling= args.range_rate_scaling,
         rangescaling=args.range_scaling,

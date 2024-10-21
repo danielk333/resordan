@@ -11,7 +11,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.time import Time
 from tqdm import tqdm
-from datetime import datetime
+import datetime as dt
+
 import h5py
 
 import sorts
@@ -514,7 +515,7 @@ def rcs_estimator(
 
                 meas_id = measurnment_id[select_id][0]
                 obj_id = indecies[select_id][0]
-                toutc = datetime.fromtimestamp(eepoch, datetime.UTC).strftime('%Y%m%d_%H%M%S_%f')
+                toutc = dt.fromtimestamp(eepoch, dt.UTC).strftime('%Y%m%d_%H%M%S_%f')
                 ename = radarid + '_' + toutc
 
                 obj = pop.get_object(obj_id)
