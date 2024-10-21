@@ -41,7 +41,7 @@ CLUSTER_PARAM_DEFAULTS = dict(
 )
 
 CORRELATE_PARAM_DEFAULTS = dict(
-    std = False,
+    stdev = False,
     jitter = False,
     range_rate_scaling = 0.2,
     range_scaling = 0.1,
@@ -184,7 +184,7 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
     for key in CORRELATE_PARAM_DEFAULTS:
         if not cfg.has_option('CORRELATE', key):
             continue
-        if key in ['jitter', 'std', 'save_states']:
+        if key in ['jitter', 'stdev', 'save_states']:
             CORRELATE_PARAMS[key] = str_to_bool(get_value(cfg, 'CORRELATE', key))
         else:
             CORRELATE_PARAMS[key] = get_value(cfg, 'CORRELATE', key)
@@ -217,7 +217,7 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
         str(tle_file),
         str(events_file.parent),
         str(correlations_dir),
-        std=CORRELATE_PARAMS['std'],
+        stdev=CORRELATE_PARAMS['stdev'],
         jitter=CORRELATE_PARAMS['jitter'],
         savestates=CORRELATE_PARAMS['save_states'],
         clobber=clobber,

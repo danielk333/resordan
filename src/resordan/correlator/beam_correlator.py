@@ -715,7 +715,7 @@ def main(input_args=None):
         action='store_true', 
         help='Override output location if it exists')
     parser.add_argument(
-        '--std', 
+        '--stdev', 
         action='store_true', 
         help='Use measurement errors')
     parser.add_argument(
@@ -749,9 +749,9 @@ def main(input_args=None):
         args.catalog,
         args.input,
         args.output,
-        args.std,
-        args.jitter,
-        args.save_states,
+        stdev=args.stdev,
+        jitter=args.jitter,
+        save_states=args.save_states,
         clobber=args.c,
         rangeratescaling= args.range_rate_scaling,
         rangescaling=args.range_scaling,
