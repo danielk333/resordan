@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import os
 import argparse
 import pathlib
 import pickle
@@ -28,11 +27,13 @@ Example:
 """
 
 # dtype for residuals
-res_t = np.dtype([('dr', np.float64),
-                ('dv', np.float64),
-                ('metric', np.float64),
-                ('jitter_index', np.float64),
-])
+res_t = np.dtype([
+                    ('dr', np.float64),
+                    ('dv', np.float64),
+                    ('metric', np.float64),
+                    ('jitter_index', np.float64)
+                ])
+
 t_jitter = np.linspace(-5, 5, num=11)
 
 try:
@@ -40,6 +41,7 @@ try:
     comm = MPI.COMM_WORLD
 except ImportError:
     comm = None
+
 
 def default_propagation_handling(obj, t, t_measurement_indices, measurements):
     """
@@ -101,16 +103,15 @@ def vector_diff_metric(t, r, v, r_ref, v_ref, **kwargs):
 
 
 def save_correlated_data(out_pth,
-                        indices,
-                        metric, 
-                        correlated_data, 
-                        measurements, 
-                        select, 
-                        not_select,
-                        meta=None,
-                        save_states=False
-                        ):
-    
+                         indices,
+                         metric, 
+                         correlated_data, 
+                         measurements, 
+                         select, 
+                         not_select,
+                         meta=None,
+                         save_states=False):
+
     print(f'Saving correlation data to {out_pth}')
     out_pth.parent.mkdir(exist_ok=True, parents=True)
     with h5py.File(out_pth, 'w') as ds:
@@ -121,13 +122,13 @@ def save_correlated_data(out_pth,
         if meta is not None:
             for key in meta:
                 ds.attrs[key] = meta[key]
-        
+
         ds['object_index'] = np.array(list(correlated_data.keys()))
         ds_obj_ind = ds['object_index']
         ds_obj_ind.make_scale('object_index')
         ds_obj_ind.attrs['long_name'] = 'Object index in the used population'
 
-        ds['correlated'] = select # this
+        ds['correlated'] = select  # this
         ds_selected = ds['correlated']
         ds_selected.make_scale('correlated')
         ds_selected.attrs['long_name'] = 'correlated objects of the population, select'
@@ -157,7 +158,7 @@ def save_correlated_data(out_pth,
         mrln = 'Matching rank numbering from best, lowest, to worst, hightest rank'
         ds_mch_ind.attrs['long_name'] = mrln
 
-        ds['observation_index'] = observation_index # this
+        ds['observation_index'] = observation_index  # this
         ds_obs_ind = ds['observation_index']
         ds_obs_ind.make_scale('observation_index')
         ds_obs_ind.attrs['long_name'] = 'Observation index in the input radar data'
@@ -173,40 +174,74 @@ def save_correlated_data(out_pth,
 
         scales = [ds_mch_ind, ds_obs_ind]
 
-        _create_ia_var(ds, 'matched_object_index', 'Index of the correlated object', #this
-            indices, scales,
+        _create_ia_var(
+            ds, 
+            'matched_object_index', 
+            'Index of the correlated object',  
+            # this
+            indices, 
+            scales
         )
-        _create_ia_var(ds, 'matched_object_metric', 'Correlation metric for correlated object',
-            metric, scales,
+        _create_ia_var(
+            ds, 
+            'matched_object_metric', 
+            'Correlation metric for correlated object',
+            metric, scales
         )
-        _create_ia_var(ds, 'matched_object_time', 'Time of correlation', # this
-            measurements[0]['times'].unix, [ds_obs_ind], units='unix',
+        _create_ia_var(
+            ds, 
+            'matched_object_time', 
+            'Time of correlation', 
+            # this
+            measurements[0]['times'].unix, 
+            [ds_obs_ind], 
+            units='unix'
         )
 
         # We currently only supply one dat dict to the correlator
-        measurement_set_index = 0
+        MSI = 0  # measurement set index
 
         def stacker(x, key):
-            return np.stack([val[measurement_set_index][key] for _, val in x.items()], axis=0)
+            return np.stack([val[MSI][key] for _, val in x.items()], axis=0)
 
         scales = [ds_obj_ind, ds_obs_ind]
-        _create_ia_var(ds, 'simulated_range', 'Simulated range',
-            stacker(correlated_data, 'r_ref'), scales, units='m',
+        _create_ia_var(
+            ds, 
+            'simulated_range', 
+            'Simulated range',
+            stacker(correlated_data, 'r_ref'), 
+            scales, 
+            units='m'
         )
-        _create_ia_var(ds, 'simulated_range_rate', 'Simulated range rate',
-            stacker(correlated_data, 'v_ref'), scales, units='m/s',
+        _create_ia_var(
+            ds, 
+            'simulated_range_rate', 
+            'Simulated range rate',
+            stacker(correlated_data, 'v_ref'), 
+            scales, 
+            units='m/s'
         )
-        _create_ia_var(ds, 'simulated_correlation_metric',
+        _create_ia_var(
+            ds, 
+            'simulated_correlation_metric',
             'Calculated metric for simulated ITRS state',
-            stacker(correlated_data, 'match'), scales,
+            stacker(correlated_data, 'match'), 
+            scales
         )
-        
+
         if save_states:
+
+            # TOOD - this probably could be done once, and then the array could be 
+            # copied if two independent indstancs are needed?
+            def as_array(correlated_data):
+                values = [val[MSI]['states'][:3, ...].T for val in correlated_data.values()]
+                return np.stack(values, axis=0)
+
             _create_ia_var(
                 ds, 
                 'simulated_position', 
                 'Simulated ITRS positions', 
-                np.stack([val[measurement_set_index]['states'][:3, ...].T for _, val in correlated_data.items()], axis=0),
+                as_array(correlated_data),
                 scales + [cartesian_pos],
                 units='m',
             )
@@ -214,7 +249,7 @@ def save_correlated_data(out_pth,
                 ds, 
                 'simulated_velocity', 
                 'Simulated ITRS velocities', 
-                np.stack([val[measurement_set_index]['states'][3:, ...].T for _, val in correlated_data.items()], axis=0),
+                as_array(correlated_data),
                 scales + [cartesian_vel],
                 units='m/s',
             )
@@ -241,29 +276,29 @@ def draw_ellipse(x_size, y_size, ax, res=100, style='-r', log=False):
     return ax
 
 
-def plot_analysis(name,
-                metric,
-                epoch,
-                xp,
-                yp,
-                scale_x,
-                scale_y, 
-                threshold, 
-                threshold_,
-                threshold_est, 
-                log10_elip_dst,
-                r,
-                t, 
-                v, 
-                select, 
-                not_select, 
-                out_path, 
-                iformat,
-                num, 
-                bins,
-                params
-                ):
-    
+def plot_analysis(
+        name,
+        metric,
+        epoch,
+        xp,
+        yp,
+        scale_x,
+        scale_y, 
+        threshold, 
+        threshold_,
+        threshold_est, 
+        log10_elip_dst,
+        r,
+        t, 
+        v, 
+        select, 
+        not_select, 
+        out_path, 
+        iformat,
+        num, 
+        bins,
+        params):
+
     out_path.mkdir(exist_ok=True, parents=True)
     # Plotting 1
     fig, axes = plt.subplots(1, 2, figsize=(15, 15))
@@ -285,12 +320,15 @@ def plot_analysis(name,
     fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     ax.hist(log10_elip_dst, num)
     if threshold is not None:
-        ax.plot([np.log10(threshold), np.log10(threshold)],
+        ax.plot(
+            [np.log10(threshold), np.log10(threshold)],
             ax.get_ylim(), '-g', label='Input threshold')
     if threshold_est is not None:
-        ax.plot([np.log10(threshold_est), np.log10(threshold_est)],
+        ax.plot(
+            [np.log10(threshold_est), np.log10(threshold_est)],
             ax.get_ylim(), '--g', label='Estimated threshold')
-        ax.plot(np.linspace(bins[0], bins[-1], 1000),
+        ax.plot(
+            np.linspace(bins[0], bins[-1], 1000),
             bimodal(np.linspace(bins[0], bins[-1], 1000), *params),
             '-r', label='Fit')
     ax.set_xlabel('Distance function [log10(1)]')
@@ -301,7 +339,7 @@ def plot_analysis(name,
     plt.close(fig)
 
     # Plotting 3
-    fig, axes = plt.subplots(2, 1, figsize=(15, 15)) # r starts here
+    fig, axes = plt.subplots(2, 1, figsize=(15, 15))  # r starts here
     ax = axes[0]
     ax.plot(t[select]/3600.0, r[select], '.r', label='Correlated')
     ax.plot(t[not_select]/3600.0, r[not_select], '.b', label='Uncorrelated')
@@ -310,7 +348,7 @@ def plot_analysis(name,
     ax.set_xlabel('Time [h]')
     ax.set_title(title_str)
     ax = axes[1]
-    ax.plot(t[select]/3600.0, v[select], '.r') # v starts here
+    ax.plot(t[select]/3600.0, v[select], '.r')  # v starts here
     ax.plot(t[not_select]/3600.0, v[not_select], '.b')
     ax.set_ylabel('Range-rate [km/s]')
     ax.set_xlabel('Time [h]')
@@ -349,8 +387,8 @@ def population_analysis(
         threshold=None,
         range_rate_scaling=None, 
         range_scaling=None, 
-        format=None
-        ):
+        format=None):
+
     """
     Analyse the two distinct populations generated by the correlation
 
@@ -392,7 +430,14 @@ def population_analysis(
         count, bins = np.histogram(log10_elip_dst, num)
         bin_centers = (bins[1:] + bins[:-1])*0.5
 
-        start = (0, np.std(log10_elip_dst)*0.5, np.max(count)*0.5, np.max(bin_centers), np.std(log10_elip_dst)*0.5, np.max(count)*0.5)
+        start = (
+            0, 
+            np.std(log10_elip_dst)*0.5, 
+            np.max(count)*0.5, 
+            np.max(bin_centers), 
+            np.std(log10_elip_dst)*0.5, 
+            np.max(count)*0.5
+        )
         params, cov = curve_fit(bimodal, bin_centers, count, start)
 
         # this is intersection and is better estimate i think
@@ -423,15 +468,17 @@ def population_analysis(
     not_select = np.logical_not(select)
 
     if num < 10:
-        plot_analysis(name, metric, epoch, xp, yp, scale_x, scale_y, threshold,
-                    threshold_, threshold_est, log10_elip_dst, r, t, v, select, 
-                    not_select, out_path, format, None, None, None
-                    )
+        plot_analysis(
+            name, metric, epoch, xp, yp, scale_x, scale_y, threshold,
+            threshold_, threshold_est, log10_elip_dst, r, t, v, select, 
+            not_select, out_path, format, None, None, None
+        )
     else:
-        plot_analysis(name, metric, epoch, xp, yp, scale_x, scale_y, threshold,
-                    threshold_, threshold_est, log10_elip_dst, r, t, v, select,
-                    not_select, out_path, format, num, bins, params
-                    )
+        plot_analysis(
+            name, metric, epoch, xp, yp, scale_x, scale_y, threshold,
+            threshold_, threshold_est, log10_elip_dst, r, t, v, select,
+            not_select, out_path, format, num, bins, params
+        )
 
     return select, not_select
 
@@ -470,7 +517,7 @@ def radar_sd_correlator(
         print('MPI detected')
         if comm.size > 1:
             print('Using MPI...')
- 
+
     s_dr = rangeratescaling
     s_r = rangescaling
 
@@ -479,7 +526,7 @@ def radar_sd_correlator(
     tle_pth = pathlib.Path(catalog).resolve()
     output_pth = pathlib.Path(output).resolve()
     input_pth = pathlib.Path(clustered_events).resolve()
-    
+
     if stdev:
         meta_vars = ['r_std', 'v_std']
     else:
@@ -492,10 +539,10 @@ def radar_sd_correlator(
 
     meta_vars.append('dr_scale')
     meta_vars.append('dv_scale')
-    
+
     input_files = input_pth.glob('*.pkl')
     input_files = sorted(input_files)
-    
+
     for in_file in input_files:
         print('Loading monostatic measurements')
         h5_file = (in_file.name.split('.'))[0] + '.h5'
@@ -513,11 +560,11 @@ def radar_sd_correlator(
                 t.append(epoch + event.t[snrid])
                 r.append(event.range[snrid])
                 v.append(event.range_rate[snrid])
-                
+
             t = np.array(t)
             r = np.array(r)
             v = np.array(v)
-                
+
             inds = np.argsort(t)
             t = t[inds]
             r = r[inds]
@@ -526,7 +573,7 @@ def radar_sd_correlator(
             times = Time(t, format='unix', scale='utc')
             epoch = times[0]
             t = (times - epoch).sec
-                
+
             # #######################
             # This is the interface layer between the input
             # data type and the correlator
@@ -549,7 +596,7 @@ def radar_sd_correlator(
                 dat['v_std'] = h_det['v_std'][()]
 
             measurements.append(dat)
-    
+
         print('Loading TLE population')
         pop = sorts.population.tle_catalog(tle_pth, cartesian=False)
         if targetepoch is not None:
@@ -583,7 +630,7 @@ def radar_sd_correlator(
             indices, metric, correlated_data = sorts.correlate(
                 measurements = measurements,
                 population = pop,
-                n_closest = 1, # Number of closest matches to save
+                n_closest = 1,  # Number of closest matches to save
                 meta_variables = meta_vars,
                 metric = vector_diff_metric,
                 sorting_function = lambda x: np.argsort(x['metric'], axis=0),
@@ -635,29 +682,68 @@ def radar_sd_correlator(
             for mind, (ind, dst) in enumerate(zip(indices.T, metric.T)):
                 print(f'measurement = {mind}')
                 for res in range(len(ind)):
-                    print(f'-- result rank = {res} | object ind = {ind[res]} | metric = {dst[res]} | obj = {pop["oid"][ind[res]]}')
+                    msg = (
+                        f'-- result rank = {res}',
+                        f' | object ind = {ind[res]}',
+                        f' | metric = {dst[res]}',
+                        f' | obj = {pop["oid"][ind[res]]}'
+                    )
+                    print(msg)
 
 
 def main(input_args=None):
 
     parser = argparse.ArgumentParser(description='Calculate TLE catalog correlation for a beampark')
-    parser.add_argument('radar', type=str, help='The observing radar system')
-    parser.add_argument('catalog', type=str, help='TLE catalog path')
-    parser.add_argument('input', type=str, help='Observation data folder/file')
-    parser.add_argument('output', type=str, help='Results output location')
-    parser.add_argument('-c', '--clobber', action='store_true', help='Override output location if it exists')
-    parser.add_argument('--std', action='store_true', help='Use measurement errors')
-    parser.add_argument('--jitter', action='store_true', help='Use time jitter')
-    parser.add_argument('--range-rate-scaling', default=0.2, type=float, help='Scaling used on range rate in the sorting function of the correlator')
-    parser.add_argument('--range-scaling', default=1.0, type=float, help='Scaling used on range in the sorting function of the correlator')
-    parser.add_argument('--save-states', action='store_true', help='Save simulated states')
-    parser.add_argument('--target-epoch', type=str, default=None, help='When filtering unique TLEs use this target epoch [ISO]')
+    parser.add_argument(
+        'radar', 
+        type=str, 
+        help='The observing radar system')
+    parser.add_argument(
+        'catalog', 
+        type=str, 
+        help='TLE catalog path')
+    parser.add_argument(
+        'input', 
+        type=str, 
+        help='Observation data folder/file')
+    parser.add_argument(
+        'output', 
+        type=str, 
+        help='Results output location')
+    parser.add_argument(
+        '-c', '--clobber', 
+        action='store_true', 
+        help='Override output location if it exists')
+    parser.add_argument(
+        '--std', 
+        action='store_true', 
+        help='Use measurement errors')
+    parser.add_argument(
+        '--jitter', 
+        action='store_true', 
+        help='Use time jitter')
+    parser.add_argument(
+        '--range-rate-scaling', 
+        default=0.2, type=float, 
+        help='Scaling used on range rate in the sorting function of the correlator')
+    parser.add_argument(
+        '--range-scaling', 
+        default=1.0, type=float, 
+        help='Scaling used on range in the sorting function of the correlator')
+    parser.add_argument(
+        '--save-states', 
+        action='store_true', 
+        help='Save simulated states')
+    parser.add_argument(
+        '--target-epoch', 
+        type=str, default=None, 
+        help='When filtering unique TLEs use this target epoch [ISO]')
 
     if input_args is None:
         args = parser.parse_args()
     else:
         args = parser.parse_args(input_args)
-        
+
     radar_sd_correlator(
         args.radar,
         args.catalog,
@@ -666,12 +752,11 @@ def main(input_args=None):
         args.c,
         args.std,
         args.jitter,
-        args.save-states,
-        rangeratescaling= args.range-rate-scaling,
-        rangescaling=args.range-scaling,
-        targetepoch=args.target-epoch,
-        )
-
+        args.save_states,
+        rangeratescaling= args.range_rate_scaling,
+        rangescaling=args.range_scaling,
+        targetepoch=args.target_epoch
+    )
 
 
 if __name__ == '__main__':
