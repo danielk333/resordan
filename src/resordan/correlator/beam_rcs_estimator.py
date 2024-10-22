@@ -489,7 +489,15 @@ def rcs_estimator(
 
         norads = np.array(norads)
         catids = norads[selected]  # succesful correlations. Distance < thrreshold
-        discos_map = get_discos_objects(catids, token)
+        number = np.ceil(len(catids)/100)
+
+        discos_map = {}
+        for i in range(int(number)):
+            if i == (number - 1):
+                dictm = get_discos_objects(catids[i*100:len(catids)], token)
+            else:
+                dictm = get_discos_objects(catids[i*100:i*100+100], token)
+            discos_map.update(dictm)
 
         pbar = tqdm(
             total=len(catids),
@@ -576,28 +584,31 @@ def rcs_estimator(
                                 data, SNR_sim, pths_off_angle, min_snr)
 
                     # best_match = np.nanargmin(matches)
-                    best_mae = np.nanargmin(pmae)
-                    if verbose:
-                        print(best_mae)
+                    if np.isnan(pmae).all():
+                        print(f'All NaN in event: {ename}')
+                    else:
+                        best_mae = np.nanargmin(pmae)
+                        if verbose:
+                            print(best_mae)
 
-                    SNR_sim, G_pth, diam, LG_ind, ecef_r, pth, rcs_data = pdatas[best_mae]
+                        SNR_sim, G_pth, diam, LG_ind, ecef_r, pth, rcs_data = pdatas[best_mae]
 
-                    # Currently, the lines commented below are not used
-                    # offset_angle = pyant.coordinates.vector_angle(pth[:, snridmax],
-                    #                radar.tx[0].beam.pointing,
-                    #                degrees=True
-                    # )
+                        # Currently, the lines commented below are not used
+                        # offset_angle = pyant.coordinates.vector_angle(pth[:, snridmax],
+                        #                radar.tx[0].beam.pointing,
+                        #                degrees=True
+                        # )
 
-                    plot_estimator_results(
-                        data, norad, radar, t_jitter, matches,
-                        best_mae, pmae, SNR_sim, snridmax, ecef_r, r, diam, pth,
-                        fileformat, results_folder
-                    )
+                        plot_estimator_results(
+                            data, norad, radar, t_jitter, matches,
+                            best_mae, pmae, SNR_sim, snridmax, ecef_r, r, diam, pth,
+                            fileformat, results_folder
+                        )
 
-                    save_estimator_results(
-                        discos_map, norad, SNR_sim, diam, G_pth, pth, 
-                        rcs_data, data, results_folder
-                    )
+                        save_estimator_results(
+                            discos_map, norad, SNR_sim, diam, G_pth, pth, 
+                            rcs_data, data, results_folder
+                        )
 
                 else:
                     print('At the time of the TLE (date), the object was to be assigned')
