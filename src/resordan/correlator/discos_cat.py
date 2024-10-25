@@ -52,9 +52,6 @@ def get_discos_objects(object_ids, token):
         params={'filter': f'in(satno,({object_ids_str}))', 'page[size]': 100},
         verify=False)
 
-    # TODO - check what happens if the expected result is larger than the page number
-    # TODO - check that you indeed get all the expected results 
-
     doc = response.json()
 
     data = {item['attributes']['satno']: item_as_tuple(item) for item in doc['data']} 

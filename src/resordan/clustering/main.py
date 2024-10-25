@@ -24,12 +24,29 @@ def main(input_args=None):
     args = parser.parse_args()
 
     src = Path(args.src)
+    for root, dirs, files in os.walk(args.src):
+        if root == args.src:
+            i = 0
+            #src = Path(root)
+            if len(dirs) and len(files) == 0:
+                return print('WARNIG: no GMF files')
+            if len(dirs) > 0:
+                events_list = []
+                for dir in sorted(dirs):
+                    srcfor = Path(os.path.join(root,dir))
+                    gmf_files = list(sorted([file for file in srcfor.rglob('*.h5') if file.is_file()]))
+                    gmf_dataset = GMFDataset.from_files(gmf_files)
+                    datas = algorithm.snr_peaks_detection(gmf_dataset, **DETECTOR_PARAMS)
+                    for events in datas.events:
+                        events.event_number = i
+                        events_list.append(events)
+                        i = i+1
+                events_dataset = EventsDataset(meta=datas.meta, detector_config=datas.detector_config, events=events_list)
+            else:
+                gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
+                gmf_dataset = GMFDataset.from_files(gmf_files)
+                events_dataset = algorithm.snr_peaks_detection(gmf_dataset, **DETECTOR_PARAMS)
 
-    # find gmf files
-    gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
-    gmf_dataset = GMFDataset.from_files(gmf_files)
-    # cluster
-    events_dataset = algorithm.snr_peaks_detection(gmf_dataset, **DETECTOR_PARAMS)
 
     if args.verbose:
         print(events_dataset)
@@ -47,8 +64,6 @@ def main(input_args=None):
             plotting.plot_peaks(axes=ax, data=gmf_dataset, detected_inds=detected_inds)
             plt.show()
 
-    else:
-        print("No detections found.")
 
 if __name__ == '__main__':
     main()
