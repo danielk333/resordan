@@ -1,12 +1,23 @@
 import logging
 from dataclasses import asdict, dataclass
-
+import os
+from pathlib import Path
 import numpy as np
 
 from ..data.events import EventDataset, EventsDataset
 from ..data.gmf import GMFDataset
 
 logger = logging.getLogger(__name__)
+
+
+
+DEFAULT_DETECTOR_PARAMS = dict(
+    loss_weights=(1e-3, 1e-3),
+    segment_split_time=1.5,
+    snr_db_threshold=20,
+    loss_threshold=10,
+)
+
 
 
 @dataclass
@@ -120,7 +131,12 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
     """
     logger.info(f"Running detection. Number of timesteps = {gmf_dataset.t.size}.")
 
-    cfg = DetectorConfig(**kwargs)
+    # create default params
+    params = {**DEFAULT_DETECTOR_PARAMS}
+    # update with supplied params
+    params.update(**kwargs)
+
+    cfg = DetectorConfig(**params)
     logger.info(f"Detector config: {cfg}.")
 
     # Threshold SNR to get detection candidates
@@ -162,3 +178,38 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
 
     logger.info(f"Detected {len(events)} targets.")
     return EventsDataset(meta=gmf_dataset.meta, detector_config=asdict(cfg), events=events)
+
+
+
+
+def event_detection(src, **params):
+    """
+    global function, doing it for larget datasets bla bla
+    """
+
+    src = Path(src)
+    for root, dirs, files in os.walk(src):
+        if root == src:
+            i = 0
+            #src = Path(root)
+            if len(dirs) and len(files) == 0:
+                return print('WARNIG: no GMF files')
+            if len(dirs) > 0:
+                events_list = []
+                for dir in sorted(dirs):
+                    srcfor = Path(os.path.join(root,dir))
+                    gmf_files = list(sorted([file for file in srcfor.rglob('*.h5') if file.is_file()]))
+                    gmf_dataset = GMFDataset.from_files(gmf_files)
+                    datas = snr_peaks_detection(gmf_dataset, **params)
+                    for events in datas.events:
+                        events.event_number = i
+                        events_list.append(events)
+                        i = i+1
+                events_dataset = EventsDataset(meta=datas.meta, detector_config=datas.detector_config, events=events_list)
+            else:
+                gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
+                gmf_dataset = GMFDataset.from_files(gmf_files)
+                events_dataset = snr_peaks_detection(gmf_dataset, **params)
+
+    return events_dataset, gmf_dataset
+
