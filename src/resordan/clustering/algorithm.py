@@ -167,17 +167,76 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
 
 
 
+def event_detection(src, **params):
+
+    """
+    does snr_peaks_detection per directory (to limit memory usage)
+
+    Parameters
+    ----------
+    src: str
+        path to GMF product folder, or subfolder within GMF product
+
+    Returns
+    -------
+        EventsDataset representing detected objects, or None        
+    """
+
+    if not src.is_dir():
+        raise Exception(f"src is not directory {src}")
+
+    def process(subdir):
+        gmf_files = list(sorted([file for file in subdir.rglob('*.h5') if file.is_file()]))        
+        if not gmf_files: 
+            return
+        gmf_dataset = GMFDataset.from_files(gmf_files)
+        return snr_peaks_detection(gmf_dataset, **params)
+
+    def results(dirs):
+        """run process across dirs and include results if not None"""
+        return [res for d in dirs if (res := process(d)) and res is not None]
+
+    # first, assume that src is a subfolder in a GMF product
+    # if it is not the result will be empty
+    # then assume that it is a GMF product containing subfolders
+    ed_list = results([src])
+    if not ed_list:
+        ed_list = results([d for d in src.iterdir() if d.is_dir()])
+
+    # check if any data was found
+    if not ed_list:
+        return None
+
+    # event numbering
+    event_counter = 0
+    for ed in ed_list:
+        for event in ed.events:
+            event.event_number = event_counter
+            event_counter += 1
+
+    # return events dataset
+    meta = ed_list[0].meta
+    detector_config = ed_list[0].detector_config
+    elist = []
+    for ed in ed_list: 
+        elist.extend(ed.events)
+    return EventsDataset(meta=meta, detector_config=detector_config, events=elist)
+
+
+
+
+"""
 
 def event_detection(src, **params):
-    """
     Uses snr_peaks_detection function for larger datasets
-    """
+    gmf_files = []
 
     for root, dirs, files in os.walk(src):
         if root == src:
             i = 0
             if len(dirs) and len(files) == 0:
-                return print('WARNIG: no GMF files')
+                print('WARNING: no GMF files')
+                return 
             if len(dirs) > 0:
                 elist = []
                 for dir in sorted(dirs):
@@ -198,3 +257,4 @@ def event_detection(src, **params):
 
     return events_dataset, gmf_dataset
 
+"""

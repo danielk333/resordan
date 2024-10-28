@@ -7,7 +7,7 @@ from resordan.clustering import algorithm
 from resordan.data.gmf import GMFDataset
 from resordan.data.events import EventsDataset
 from resordan.correlator.beam_rcs_estimator import rcs_estimator
-from resordan.correlator.space_track_download import fetch_tle
+from resordan.correlator.space_track_download import fetch_publish_tle
 from resordan.correlator.beam_correlator import radar_sd_correlator
 
 ISO_FMT = '%Y-%m-%dT%H:%M:%S'
@@ -138,20 +138,15 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
     if verbose:
         print('CLUSTERING:')
 
-    gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
-    if not events_file.exists() or clobber:
-        #gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
-        gmf_dataset = GMFDataset.from_files(gmf_files)
-
-        CLUSTER_PARAMS = {**CLUSTER_PARAM_DEFAULTS}
-        for key in CLUSTER_PARAM_DEFAULTS:
-            if cfg.has_option('CLUSTER', key):
-                CLUSTER_PARAMS[key] = eval(get_value(cfg, 'CLUSTER', key))
-        
-        events_dataset = algorithm.snr_peaks_detection(gmf_dataset, **CLUSTER_PARAMS)
-        EventsDataset.to_pickle(events_dataset, events_file)
-        if verbose:
-            print(f"{len(events_dataset.events)} detections")
+    CLUSTER_PARAMS = {**CLUSTER_PARAM_DEFAULTS}
+    for key in CLUSTER_PARAM_DEFAULTS:
+        if cfg.has_option('CLUSTER', key):
+            CLUSTER_PARAMS[key] = eval(get_value(cfg, 'CLUSTER', key))
+    
+    events_dataset = algorithm.event_detection(src, **CLUSTER_PARAMS)
+    EventsDataset.to_pickle(events_dataset, events_file)
+    if verbose:
+        print(f"{len(events_dataset.events)} detections")
 
     ###########################################
     # SPACETRACK TLE DOWNLOAD
@@ -161,12 +156,11 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
 
     if not tle_file.exists() or clobber:
 
-        # get timestamp for start of gmf product
-        with h5py.File(gmf_files[0], "r") as f:        
-            epoch = float(f['epoch_unix'][()])
-            epoch_dt = dt.datetime.fromtimestamp(epoch, dt.UTC)
+        epoch = events_dataset.events[0].epoch
+        epoch_dt = dt.datetime.fromtimestamp(epoch, tz=dt.timezone.utc)
 
-        lines = fetch_tle(epoch_dt, st_user, st_passwd)
+        # get tle
+        lines = fetch_publish_tle(epoch_dt, st_user, st_passwd)
 
         if verbose:
             print(f"{len(lines)} lines")
