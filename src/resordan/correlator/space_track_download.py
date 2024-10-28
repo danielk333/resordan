@@ -3,23 +3,20 @@ import sys
 import re
 import getpass
 import argparse
-import pathlib
 from datetime import datetime, timedelta
 import datetime as dt
 import subprocess
-import codecs
 import spacetrack 
 
 
 """
-fetch_tle() is added as a standalone function to access core functionality.
-
-TODO: Refactor so that the CLI interface (main()) uses this function.
+Get TLE's published for the time period 24h before the observation day
+or TLE for given objects.
 """
 
-def fetch_tle(epoch_dt, st_user, st_passwd):
+def fetch_publish_tle(epoch_dt, st_user, st_passwd):
+    # Get published TLE's for the period 24 hour before the start of the experiment
     st = spacetrack.SpaceTrackClient(identity=st_user, password=st_passwd)
-    # backdate to 23 hour period before epoch dt
     dt0 = epoch_dt - dt.timedelta(hours=24)
     dt1 = epoch_dt - dt.timedelta(hours=1)
     drange = spacetrack.operators.inclusive_range(dt0, dt1)
@@ -28,6 +25,17 @@ def fetch_tle(epoch_dt, st_user, st_passwd):
         orderby='TLE_LINE1', 
         format='tle',
         publish_epoch=drange
+    ))
+
+def fetch_tle(norad_cat_id, drange, st_user, st_passwd):
+    # Get published TLE's for the given objects
+    st = spacetrack.SpaceTrackClient(identity=st_user, password=st_passwd)
+    return list(st.tle(
+        norad_cat_id=norad_cat_id,
+        iter_lines=True, 
+        orderby='TLE_LINE1', 
+        format='tle',
+        epoch=drange
     ))
 
 
@@ -60,7 +68,6 @@ def main(input_args=None):
     parser.add_argument('end_date', type=str, nargs='?', default='now',
                     help='End date of snapshot [ISO]')
     parser.add_argument('output', nargs='?', type=argparse.FileType('w'), default=sys.stdout)
-    parser.add_argument('--secret-tool-key', '-k', nargs=1)
     parser.add_argument('--credentials', '-c', nargs=1, type=str, help='File containing username and password for space-track.org')
     parser.add_argument('--name', '-n', default=None, help='Name of the object to match with the "like" operator')
 
@@ -81,28 +88,8 @@ def main(input_args=None):
     except AssertionError:
         dt0 = datetime.strptime(args.start_date, _iso_fmt)
 
-    if args.output is not sys.stdout:
-        print(f'Getting TLEs for the range [{dt0} -> {dt1}]')
-        print(f'Output to {args.output.name}')
-
-    drange = spacetrack.operators.inclusive_range(dt0, dt1)
-    kwargs = {}
-
-    if args.name is not None:
-        name_op = spacetrack.operators.like(args.name)
-        kwargs['norad_cat_id'] = name_op
-        kwargs['epoch'] = drange
-    else:
-        kwargs['publish_epoch'] = drange
-
-    if args.secret_tool_key is not None:
-        res = subprocess.run(['secret-tool', 'lookup', 'username'] + args.secret_tool_key, 
-                            capture_output=True, text=True)
-        user = res.stdout
-        res = subprocess.run(['secret-tool', 'lookup', 'password'] + args.secret_tool_key, 
-                            capture_output=True, text=True)
-        passwd = res.stdout
-    elif args.credentials is not None:
+    # Read credentials
+    if args.credentials is not None:
         sourcefile = (args.credentials)[0]
         proc = subprocess.Popen("sed -n '1p' "+sourcefile, stdout=subprocess.PIPE, shell=True)
         user = proc.stdout.read()
@@ -114,31 +101,23 @@ def main(input_args=None):
         user = input("Username for space-track.org:")
         passwd = getpass.getpass("Password for " + user + ":")
 
-    st = spacetrack.SpaceTrackClient(identity=user, password=passwd)
 
+    # get published TLE for the time period 24h before the observation day
+    # get TLE for the given objects 
     if args.name is not None:
-        print('Using CLASS "tle"...')
-        lines = st.tle(
-            iter_lines=True, 
-            orderby='TLE_LINE1', 
-            format='tle',
-            **kwargs
-        )
+        drange = spacetrack.operators.inclusive_range(dt0, dt1)
+        name_op = spacetrack.operators.like(args.name)
+        lines = fetch_tle(name_op, drange, user, passwd)
     else:
-        print('Using CLASS "tle_publish"...')
-        lines = st.tle_publish(
-            iter_lines=True, 
-            orderby='TLE_LINE1', 
-            format='tle',
-            **kwargs
-        )
+        lines = fetch_publish_tle(dt1, user, passwd)
+
+    # Write results
     lineno = 0
     for line in lines:
         args.output.write(line + '\n')
         lineno += 1
 
-    if args.output is not sys.stdout:
-        print(f'Wrote {lineno} lines to {args.output.name}')
+
 
 if __name__ == '__main__':
     main()
