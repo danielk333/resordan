@@ -137,8 +137,10 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
 
     if verbose:
         print('CLUSTERING:')
+
+    gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
     if not events_file.exists() or clobber:
-        gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
+        #gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
         gmf_dataset = GMFDataset.from_files(gmf_files)
 
         CLUSTER_PARAMS = {**CLUSTER_PARAM_DEFAULTS}
