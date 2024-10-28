@@ -7,7 +7,7 @@ from resordan.clustering import algorithm
 from resordan.data.gmf import GMFDataset
 from resordan.data.events import EventsDataset
 from resordan.correlator.beam_rcs_estimator import rcs_estimator
-from resordan.correlator.space_track_download import fetch_tle
+from resordan.correlator.space_track_download import fetch_publish_tle
 from resordan.correlator.beam_correlator import radar_sd_correlator
 
 ISO_FMT = '%Y-%m-%dT%H:%M:%S'
@@ -166,7 +166,7 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
             epoch = float(f['epoch_unix'][()])
             epoch_dt = dt.datetime.fromtimestamp(epoch, dt.UTC)
 
-        lines = fetch_tle(epoch_dt, st_user, st_passwd)
+        lines = fetch_publish_tle(epoch_dt, st_user, st_passwd)
 
         if verbose:
             print(f"{len(lines)} lines")
