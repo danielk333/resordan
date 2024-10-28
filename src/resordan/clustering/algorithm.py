@@ -1,14 +1,11 @@
 import logging
 from dataclasses import asdict, dataclass
-import os
-from pathlib import Path
 import numpy as np
 
 from ..data.events import EventDataset, EventsDataset
 from ..data.gmf import GMFDataset
 
 logger = logging.getLogger(__name__)
-
 
 
 @dataclass
@@ -42,8 +39,9 @@ def _detect_in_window(
     r: np.ndarray,
     v: np.ndarray,
     a: np.ndarray,
-    cfg: DetectorConfig,
+    cfg: DetectorConfig
 ) -> bool:
+
     """Run detection for a window of data."""
     if t.size < cfg.min_n_samples:
         logger.warning(f"Not enough samples for polynomial fit ({t.size}).")
@@ -164,7 +162,6 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
 
     logger.info(f"Detected {len(events)} targets.")
     return EventsDataset(meta=gmf_dataset.meta, detector_config=asdict(cfg), events=events)
-
 
 
 def event_detection(src, **params):
