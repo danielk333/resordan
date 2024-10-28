@@ -27,7 +27,7 @@ def fetch_publish_tle(epoch_dt, st_user, st_passwd):
         publish_epoch=drange
     ))
 
-def fetch_tle(norad_cat_id, drange, st_user, st_passwd):
+def fetch_object_tle(norad_cat_id, drange, st_user, st_passwd):
     # Get published TLE's for the given objects
     st = spacetrack.SpaceTrackClient(identity=st_user, password=st_passwd)
     return list(st.tle(
@@ -107,7 +107,7 @@ def main(input_args=None):
     if args.name is not None:
         drange = spacetrack.operators.inclusive_range(dt0, dt1)
         name_op = spacetrack.operators.like(args.name)
-        lines = fetch_tle(name_op, drange, user, passwd)
+        lines = fetch_object_tle(name_op, drange, user, passwd)
     else:
         lines = fetch_publish_tle(dt1, user, passwd)
 
