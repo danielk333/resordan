@@ -378,6 +378,8 @@ def save_estimator_results(
                 rcs_data = rcs_data,
                 snr_data = data.snr,
                 timearray = data.t,
+                range = data.range,
+                range_rate = data.range_rate,
                 nameo = nameo,
                 objectClass = oClass,
                 mission = mission,
@@ -392,6 +394,7 @@ def save_estimator_results(
                 xSectMin = xsMin,
                 xSectAvg = xsAvg,
     )
+
 
     with open(results_folder / 'correlated_snr_prediction.pickle', 'wb') as fh:
         pickle.dump(summary_data, fh)
