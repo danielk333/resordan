@@ -1,8 +1,6 @@
 import logging
 from dataclasses import asdict, dataclass
 import numpy as np
-import os
-from pathlib import Path
 from resordan.data.events import EventDataset, EventsDataset
 from resordan.data.gmf import GMFDataset
 
@@ -165,38 +163,6 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
     return EventsDataset(meta=gmf_dataset.meta, detector_config=asdict(cfg), events=events)
 
 
-
-def event_detection_old(src, **params):
-    gmf_files = []
-    for root, dirs, files in os.walk(src):
-        if root == src:
-            i = 0
-            if len(dirs) and len(files) == 0:
-                print('WARNING: no GMF files')
-                return 
-            if len(dirs) > 0:
-                elist = []
-                for dir in sorted(dirs):
-                    srcfor = Path(os.path.join(root,dir))
-                    gmf_files = list(sorted([file for file in srcfor.rglob('*.h5') if file.is_file()]))
-                    gmf_dataset = GMFDataset.from_files(gmf_files)
-                    datas = snr_peaks_detection(gmf_dataset, **params)
-                    for events in datas.events:
-                        events.event_number = i
-                        elist.append(events)
-                        i = i+1
-                events_dataset = EventsDataset(meta=datas.meta, detector_config=datas.detector_config, events=elist)
-            else:
-                src = Path(src)
-                gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
-                gmf_dataset = GMFDataset.from_files(gmf_files)
-                events_dataset = snr_peaks_detection(gmf_dataset, **params)
-
-    return events_dataset
-
-
-
-
 def event_detection(src, **params):
 
     """
@@ -216,10 +182,10 @@ def event_detection(src, **params):
         raise Exception(f"src is not directory {src}")
 
     def process(subdir):
-        gmf_files = list(sorted([file for file in subdir.rglob('*.h5') if file.is_file()]))        
+        gmf_files = [f for f in subdir.iterdir() if f.is_file() and f.suffix == ".h5"]
         if not gmf_files: 
             return
-        gmf_dataset = GMFDataset.from_files(gmf_files)
+        gmf_dataset = GMFDataset.from_files(list(sorted(gmf_files)))
         return snr_peaks_detection(gmf_dataset, **params)
 
     def results(dirs):
