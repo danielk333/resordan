@@ -191,7 +191,12 @@ def event_detection(src, **params):
 
     def results(dirs):
         """run process across dirs and include results if not None"""
-        return [res for d in dirs if (res := process(d)) and res is not None]
+        results = []
+        for d in dirs:
+            res = process(d)
+            if res is not None:
+                results.append(res)
+        return results
 
     # first, assume that src is a subfolder in a GMF product
     # if it is not the result will be empty
