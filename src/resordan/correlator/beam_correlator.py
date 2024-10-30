@@ -451,8 +451,8 @@ def population_analysis(
     # Loading clustering data
     r = measurements[0]['r']/2
     v = measurements[0]['v']/2
-    t = measurements[0]['t']/2
-    epoch = Time(t.min(), format='unix')
+    t = measurements[0]['t']
+    epoch = measurements[0]['epoch']
     t = t - t.min()
 
     # selection
