@@ -449,8 +449,8 @@ def population_analysis(
         print(f'ESTIMATED threshold: {threshold_est*1e3}')
 
     # Loading clustering data
-    r = measurements[0]['r']/2
-    v = measurements[0]['v']/2
+    r = measurements[0]['r']/2/1e3
+    v = measurements[0]['v']/2/1e3
     t = measurements[0]['t']
     epoch = measurements[0]['epoch']
     t = t - t.min()
