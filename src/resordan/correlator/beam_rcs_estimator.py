@@ -350,7 +350,8 @@ def save_estimator_results(
         G_pth, 
         pth, 
         rcs_data, 
-        data, 
+        data,
+        offset_angle,
         results_folder):
     """
     Save measured and simulated time series for each object with 
@@ -373,7 +374,7 @@ def save_estimator_results(
                 pth_sim = pth,
                 # measurement_id = meas_id,
                 # object_id = obj_id,
-                # offset_angle = offset_angle,
+                offset_angle = offset_angle,
                 catid = satno,
                 rcs_data = rcs_data,
                 snr_data = data.snr,
@@ -597,10 +598,14 @@ def rcs_estimator(
                         SNR_sim, G_pth, diam, LG_ind, ecef_r, pth, rcs_data = pdatas[best_mae]
 
                         # Currently, the lines commented below are not used
-                        # offset_angle = pyant.coordinates.vector_angle(pth[:, snridmax],
-                        #                radar.tx[0].beam.pointing,
-                        #                degrees=True
-                        # )
+                        offset_angle_array = []
+                        for kk in range(0,len(pth[0, :])):
+                            offset_angle = pyant.coordinates.vector_angle(
+                                        pth[:, kk],
+                                        radar.tx[0].beam.pointing,
+                                        degrees=True
+                            )
+                            offset_angle_array.append(offset_angle[0])
 
                         plot_estimator_results(
                             data, norad, radar, t_jitter, matches,
@@ -610,7 +615,7 @@ def rcs_estimator(
 
                         save_estimator_results(
                             discos_map, norad, SNR_sim, diam, G_pth, pth, 
-                            rcs_data, data, results_folder
+                            rcs_data, data, offset_angle_array, results_folder
                         )
 
                 else:
