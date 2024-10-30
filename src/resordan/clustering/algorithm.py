@@ -202,7 +202,7 @@ def event_detection(src, **params):
     # then assume that it is a GMF product containing subfolders
     ed_list = results([src])
     if not ed_list:
-        ed_list = results([d for d in src.iterdir() if d.is_dir()])
+        ed_list = results([d for d in sorted(src.iterdir()) if d.is_dir()])
 
     # check if any data was found
     if not ed_list:
