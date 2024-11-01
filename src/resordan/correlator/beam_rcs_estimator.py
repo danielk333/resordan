@@ -336,6 +336,7 @@ def plot_estimator_results(
     axes[1, 1].set_xlabel('Time [s]')
     axes[1, 1].set_ylabel('Normalized SNR [dB]')
     title_date = results_folder.stem.split('_')
+    axes[0, 1].sharex(axes[1, 1])
     mdate = Time(data.epoch, format='unix', scale='utc').iso
     fig.suptitle(f'{title_date[0].upper()} - {mdate}: NORAD-ID = {norad}')
     fig.savefig(results_folder / f'correlated_pass_snr_match.{fileformat}')
