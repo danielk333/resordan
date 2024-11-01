@@ -1,10 +1,8 @@
 from pathlib import Path
-import h5py
 import datetime as dt
 import tempfile
 import shutil
 from resordan.clustering import algorithm
-from resordan.data.gmf import GMFDataset
 from resordan.data.events import EventsDataset
 from resordan.correlator.beam_rcs_estimator import rcs_estimator
 from resordan.correlator.space_track_download import fetch_publish_tle
@@ -118,7 +116,9 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
 
     dst = Path(dst)
     if not dst.exists():
-        raise Exception(f"Out directory does not exists {dst}")
+        dst.mkdir(parents=True, exist_ok=True)
+        #raise Exception(f"Out directory does not exists {dst}")
+    
 
     # make temporary folder
     if tmp is None:
@@ -127,8 +127,8 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
     if not tmp.is_dir():
         raise Exception(f"tmp is not a directory: {tmp}")        
 
-    tle_file = tmp / "tle.txt"
     events_file = tmp / "events.pkl"
+    tle_file = tmp / "tle.txt"
     correlations_dir = tmp
 
     ###########################################
@@ -138,15 +138,16 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
     if verbose:
         print('CLUSTERING:')
 
-    CLUSTER_PARAMS = {**CLUSTER_PARAM_DEFAULTS}
-    for key in CLUSTER_PARAM_DEFAULTS:
-        if cfg.has_option('CLUSTER', key):
-            CLUSTER_PARAMS[key] = eval(get_value(cfg, 'CLUSTER', key))
-    
-    events_dataset = algorithm.event_detection(src, **CLUSTER_PARAMS)
-    EventsDataset.to_pickle(events_dataset, events_file)
-    if verbose:
-        print(f"{len(events_dataset.events)} detections")
+    if not events_file.exists() or clobber:
+        CLUSTER_PARAMS = {**CLUSTER_PARAM_DEFAULTS}
+        for key in CLUSTER_PARAM_DEFAULTS:
+            if cfg.has_option('CLUSTER', key):
+                CLUSTER_PARAMS[key] = eval(get_value(cfg, 'CLUSTER', key))
+        
+        events_dataset = algorithm.event_detection(src, **CLUSTER_PARAMS)
+        EventsDataset.to_pickle(events_dataset, events_file)
+        if verbose:
+            print(f"{len(events_dataset.events)} detections")
 
     ###########################################
     # SPACETRACK TLE DOWNLOAD
