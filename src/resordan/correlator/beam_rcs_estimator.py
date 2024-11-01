@@ -353,6 +353,8 @@ def save_estimator_results(
         rcs_data, 
         data,
         offset_angle,
+        az,
+        ele,
         results_folder):
     """
     Save measured and simulated time series for each object with 
@@ -376,6 +378,7 @@ def save_estimator_results(
                 # measurement_id = meas_id,
                 # object_id = obj_id,
                 offset_angle = offset_angle,
+                pointing = [az, ele],
                 catid = satno,
                 rcs_data = rcs_data,
                 snr_data = data.snr,
@@ -616,7 +619,7 @@ def rcs_estimator(
 
                         save_estimator_results(
                             discos_map, norad, SNR_sim, diam, G_pth, pth, 
-                            rcs_data, data, offset_angle_array, results_folder
+                            rcs_data, data, offset_angle_array, az, ele, results_folder
                         )
 
                 else:
