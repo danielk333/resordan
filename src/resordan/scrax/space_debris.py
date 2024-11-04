@@ -6,16 +6,15 @@ Created on Fri Nov 10 13:57:20 2023
 """
 
 import numpy as np
-from DielectricMaterial import DielectricMaterial
-from getSphereRCS import getSphereRCS
-from getWireRCS import getWireRCS
-from getCircularPlateRCS import getCircularPlateRCS
-from getSquarePlateRCS import getSquarePlateRCS
-from getOpenCylinderRCS import getOpenCylinderRCS
-from getClosedCylinderRCS import getClosedCylinderRCS
-from sampling import uniform_random_sampling, fibonacci_sphere_sampling, \
-    golden_spiral_sampling
-from tumbling import fixed_tumbling, random_tumbling
+from resordan.scrax.dielectric_material import DielectricMaterial
+from resordan.scrax.get_sphere_rcs import getSphereRCS
+from resordan.scrax.get_wire_rcs import getWireRCS
+from resordan.scrax.get_circular_plate_rcs import getCircularPlateRCS
+from resordan.scrax.get_square_plate_rcs import getSquarePlateRCS
+from resordan.scrax.get_open_cylinder_rcs import getOpenCylinderRCS
+from resordan.scrax.get_closed_cylinder_rcs import getClosedCylinderRCS
+from resordan.scrax.sampling import uniformRandomSampling, fibonacciSphereSampling, goldenSpiralSampling
+from resordan.scrax.tumbling import fixedTumbling, randomTumbling
 
 """
 Class: DebrisMeasurement
@@ -196,11 +195,11 @@ class DebrisObject:
                repeatable=False): # repeatable sample (or add random angle)
         
         if method=='random':
-            x, y, z = uniform_random_sampling(num_points)
+            x, y, z = uniformRandomSampling(num_points)
         elif method=='fibonacci':
-            x, y, z = fibonacci_sphere_sampling(num_points, repeatable)
+            x, y, z = fibonacciSphereSampling(num_points, repeatable)
         elif method=='golden':
-            x, y, z = golden_spiral_sampling(num_points, repeatable)
+            x, y, z = goldenSpiralSampling(num_points, repeatable)
         else:
             raise TypeError("Unknown sampling method in DebrisObject.sample().")
         
@@ -220,13 +219,13 @@ class DebrisObject:
         
         if rotation_axis==[]:
             # Tumbling around random rotation axis
-            x, y, z = random_tumbling(angular_speed, 
+            x, y, z = randomTumbling(angular_speed, 
                                       sample_rate,
                                       num_points,
                                       in_degrees=False)
         else:
             # Tumbling around specified rotation axis
-            x, y, z = fixed_tumbling(angular_speed,
+            x, y, z = fixedTumbling(angular_speed,
                                      sample_rate,
                                      num_points,
                                      rotation_axis,

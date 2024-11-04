@@ -6,30 +6,30 @@ Created on Fri Nov 10 09:44:09 2023
 """
 
 import numpy as np
-from getWireRCS import getWireRCS
-from getCircularPlateRCS import getCircularPlateRCS
-from getSquarePlateRCS import getSquarePlateRCS
-from getSphereRCS import getSphereRCS
-from getSimplifiedOpenCylinderRCS import getSimplifiedOpenCylinderRCS
-from getOpenCylinderRCS import getOpenCylinderRCS
-from getClosedCylinderRCS import getClosedCylinderRCS
-from DielectricMaterial import DielectricMaterial as DM
-from sampling import fibonacci_sphere_sampling, golden_spiral_sampling, uniform_random_sampling
-#from tumbling import random_tumbling, tumbling, random_unit_sphere
-from tumbling import cart2sph
+from resordan.scrax.get_wire_rcs import getWireRCS
+from resordan.scrax.get_circular_plate_rcs import getCircularPlateRCS
+from resordan.scrax.get_square_plate_rcs import getSquarePlateRCS
+from resordan.scrax.get_sphere_rcs import getSphereRCS
+from resordan.scrax.get_simplified_open_cylinder_rcs import getSimplifiedOpenCylinderRCS
+from resordan.scrax.get_open_cylinder_rcs import getOpenCylinderRCS
+from resordan.scrax.get_closed_cylinder_rcs import getClosedCylinderRCS
+from resordan.scrax.dielectric_material import DielectricMaterial as DM
+from resordan.scrax.sampling import fibonacciSphereSampling, goldenSpiralSampling, uniformRandomSampling
+#from resordan.scrax.tumbling import randomTumbling, tumbling, randomUnitSphere
+from resordan.scrax.tumbling import cart2sph
 
 def sample_angles(num_points, # number of samples
                   sampling_method): # sampling method
     
     if sampling_method == 'fibonacci':
         # Fibonacci sphere sampling
-        x, y, z = fibonacci_sphere_sampling(num_points)
+        x, y, z = fibonacciSphereSampling(num_points)
     elif sampling_method == 'golden':
         # Golden section spiral sampling
-        x, y, z = golden_spiral_sampling(num_points)
+        x, y, z = goldenSpiralSampling(num_points)
     elif sampling_method == 'random':
         # Uniform random sampling
-        x, y, z = uniform_random_sampling(num_points)
+        x, y, z = uniformRandomSampling(num_points)
     else:
         Warning('Unknown sampling method.')
         return None

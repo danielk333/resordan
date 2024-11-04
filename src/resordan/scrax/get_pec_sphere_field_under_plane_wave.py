@@ -49,11 +49,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 import numpy as np
-from DielectricMaterial import DielectricMaterial as DM
-from refsystem import cartToSph, get_legendre
-from bessel import ric_besselj, ric_besselj_derivative, \
-    ric_besselh, ric_besselh_derivative
-from getNMax import getNMax
+from resordan.scrax.dielectric_material import DielectricMaterial as DM
+from resordan.scrax.ref_system import cartToSph, getLegendre
+from resordan.scrax.bessel import ricBesselJ, ricBesselJDerivative, \
+    ricBesselH, ricBesselHDerivative
+from resordan.scrax.get_n_max import getNMax
 
 def getPECSphereFieldUnderPlaneWave(radius, 
                                     sphere, 
@@ -150,16 +150,16 @@ def getPECSphereFieldUnderPlaneWave(radius,
         
         A = np.matmul(np.reshape(np.sqrt(mu_s*eps_m), (M,1)), 
                       np.ones((1,N)))
-        B = np.transpose(ric_besselj(nu,k_m*R))
-        C = np.transpose(ric_besselj_derivative(nu,k_s*R))
+        B = np.transpose(ricBesselJ(nu,k_m*R))
+        C = np.transpose(ricBesselJDerivative(nu,k_s*R))
         D = np.matmul(np.reshape(np.sqrt(mu_m*eps_s), (M,1)), 
                       np.ones((1,N)))
-        E = np.transpose(ric_besselj(nu,k_s*R))
-        F = np.transpose(ric_besselj_derivative(nu,k_m*R))
+        E = np.transpose(ricBesselJ(nu,k_s*R))
+        F = np.transpose(ricBesselJDerivative(nu,k_m*R))
         num = A*B*C - D*E*F
 
-        G = np.transpose(ric_besselh_derivative(nu, k_m*R, 2,1))
-        H = np.transpose(ric_besselh(nu,k_m*R,2));
+        G = np.transpose(ricBesselHDerivative(nu, k_m*R, 2,1))
+        H = np.transpose(ricBesselH(nu,k_m*R,2));
         den = D*E*G - A*H*C;
         
         b_n = (num/den)*a_n
@@ -190,9 +190,9 @@ def getPECSphereFieldUnderPlaneWave(radius,
                     break
         
         x = k_m*r
-        alpha00 = np.transpose(ric_besselh_derivative(nu,x,2,2));   
-        alpha01 = np.transpose(ric_besselh(nu,x,2));
-        alpha10 = np.array(get_legendre(nu,1, np.cos(theta)))
+        alpha00 = np.transpose(ricBesselHDerivative(nu,x,2,2));   
+        alpha01 = np.transpose(ricBesselH(nu,x,2));
+        alpha10 = np.array(getLegendre(nu,1, np.cos(theta)))
         alpha11 = np.transpose(np.matmul(np.reshape(alpha10, (N,1)), 
                                          np.ones((1,M)) ) )
         alpha = (alpha00 + alpha01) * alpha11
@@ -200,15 +200,15 @@ def getPECSphereFieldUnderPlaneWave(radius,
         E_r = -1j * np.cos(phi) * np.sum((b_n * alpha), 1)
         H_r = -1j * np.sin(phi) * np.sum((c_n * alpha), 1) / eta_m
 
-        alpha = np.transpose(ric_besselh_derivative(nu,x,2)) * aux1
-        beta = np.transpose(ric_besselh(nu,x,2)) * aux0
+        alpha = np.transpose(ricBesselHDerivative(nu,x,2)) * aux1
+        beta = np.transpose(ricBesselH(nu,x,2)) * aux0
         summation1 = 1j*b_n*alpha - c_n*beta
         summation2 = 1j*c_n*alpha - b_n*beta
         E_theta = (np.cos(phi)/ x) * np.sum(summation1,1)
         H_theta = (np.sin(phi)/x ) * np.sum(summation2,1) / eta_m
         
-        alpha = np.transpose(ric_besselh_derivative(nu,x,2)) * aux0
-        beta = np.transpose(ric_besselh(nu,x,2)) * aux1;
+        alpha = np.transpose(ricBesselHDerivative(nu,x,2)) * aux0
+        beta = np.transpose(ricBesselH(nu,x,2)) * aux1;
         summation1 = 1j*b_n*alpha - c_n*beta
         summation2 = 1j*c_n*alpha - b_n*beta
         E_phi = (np.sin(phi)/x) * np.sum(summation1,1)

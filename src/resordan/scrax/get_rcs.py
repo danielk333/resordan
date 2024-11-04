@@ -50,9 +50,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 import numpy as np
-from DielectricMaterial import DielectricMaterial as DM
-from getDielectricSphereFieldUnderPlaneWave import getDielectricSphereFieldUnderPlaneWave
-from refsystem import norm
+from resordan.scrax.dielectric_material import DielectricMaterial as DM
+from resordan.scrax.get_dielectric_sphere_field_under_plane_wave import getDielectricSphereFieldUnderPlaneWave
+from resordan.scrax.ref_system import norm
 
 def getSphereRCS(radius, ratio, background_material, sphere_material, sensor_location):
     '''

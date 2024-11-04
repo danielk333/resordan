@@ -18,8 +18,8 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.manifold import TSNE
-from DielectricMaterial import DielectricMaterial
-from SpaceDebris import DebrisMeasurement, DebrisObject
+from resordan.scrax.dielectric_material import DielectricMaterial
+from resordan.scrax.space_debris import DebrisMeasurement, DebrisObject
 
 # Define measurement setup
 #fc = 2.24e8 # EISCAT VHF radar frequency
@@ -278,7 +278,7 @@ data_generated = True
 #
 
 if not data_generated:
-    regdata = loadmat('regvec.mat')
+    regdata = loadmat('dev/git/resordan/tests/data/regvec.mat')
     regvec = regdata.get("regressor")
     y = regdata.get("regressand")
 
@@ -448,15 +448,34 @@ for idx in range(L):
             
 #%%
 # Plot performance metrics
+
 fig4 = plt.figure(4)
-fig4, ax4 = plt.subplots(5,1)
-ax4.semilogx(np.array(n_rcs), mse[:,0])
-ax4.semilogx(np.array(n_rcs), mse[:,1])
-ax4.semilogx(np.array(n_rcs), mse[:,2])
-ax4.semilogx(np.array(n_rcs), mse[:,3])
-ax4.semilogx(np.array(n_rcs), mse[:,4])
-ax4.set_xlabel("No. data points")
-        
+fig4, (ax41, ax42, ax43) = plt.subplots(1,3)
+
+ax41.semilogx(np.array(n_rcs), mse[:,0])
+ax41.semilogx(np.array(n_rcs), mse[:,1])
+ax41.semilogx(np.array(n_rcs), mse[:,2])
+ax41.semilogx(np.array(n_rcs), mse[:,3])
+ax41.semilogx(np.array(n_rcs), mse[:,4])
+ax41.set_title("MSE")
+ax41.set_xlabel("No. data points")
+
+ax42.semilogx(np.array(n_rcs), mae[:,0])
+ax42.semilogx(np.array(n_rcs), mae[:,1])
+ax42.semilogx(np.array(n_rcs), mae[:,2])
+ax42.semilogx(np.array(n_rcs), mae[:,3])
+ax42.semilogx(np.array(n_rcs), mae[:,4])
+ax42.set_title("MAE")
+ax42.set_xlabel("No. data points")
+
+ax43.semilogx(np.array(n_rcs), mape[:,0], label='cyl')
+ax43.semilogx(np.array(n_rcs), mape[:,1], label='c.pl.')
+ax43.semilogx(np.array(n_rcs), mape[:,2], label='s.pl.')
+ax43.semilogx(np.array(n_rcs), mape[:,3], label='wire')
+ax43.semilogx(np.array(n_rcs), mape[:,4], label='sph')
+ax43.set_title("MAPE")
+ax43.set_xlabel("No. data points")
+ax43.legend()        
 
 #%%
 
@@ -476,15 +495,15 @@ init = 'pca'
 tsne = TSNE(n_components=nc, perplexity=ppl, learning_rate=lr, init=init)
 
 # Compute radius to height ratio
-ratio = r/h
-rtmin = min(ratio)
-rtmax = max(ratio)
+#ratio = r/h
+#rtmin = min(ratio)
+#rtmax = max(ratio)
 
 # Allocate colour array
-col = np.zeros((n_stat, 3), dtype=float)
-col[:,0] = (np.log(r) - np.log(rmin)) / (np.log(rmax) - np.log(rmin)) # red = radius
-col[:,1] = (np.log(h) - np.log(hmin)) / (np.log(hmax) - np.log(hmin)) # green = height
-col[:,2] = (ratio - rtmin) / (rtmax - rtmin) # blue = r/h ratio
+#col = np.zeros((n_stat, 3), dtype=float)
+#col[:,0] = (np.log(r) - np.log(rmin)) / (np.log(rmax) - np.log(rmin)) # red = radius
+#col[:,1] = (np.log(h) - np.log(hmin)) / (np.log(hmax) - np.log(hmin)) # green = height
+#col[:,2] = (ratio - rtmin) / (rtmax - rtmin) # blue = r/h ratio
 
 for idx in range(L):
     # Import data
@@ -493,7 +512,9 @@ for idx in range(L):
     X_tsne = tsne.fit_transform(X)
     # Plot t-SNE space
     plt.figure(idx+4)
-    plt.scatter(X_tsne[:,0], X_tsne[:,1], c=col)
+    for idy in range(n_obj):
+        obj_data = np.arange(n_stat) + idy * n_stat
+        plt.scatter(X_tsne[obj_data,0], X_tsne[obj_data,1])
     plt.show()
 
 #%%

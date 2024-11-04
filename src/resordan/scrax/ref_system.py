@@ -84,7 +84,7 @@ def sphToCart(r,theta,phi):
 
     return [x,y,z]
 
-def get_legendre(n,m,x):
+def getLegendre(n,m,x):
     '''
         Returns an array dimensions len(N) by 1 with the 
         value of the m-th degree term of the n-th order 

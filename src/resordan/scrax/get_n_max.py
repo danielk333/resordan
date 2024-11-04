@@ -50,7 +50,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import numpy as np
 import math
-from DielectricMaterial import DielectricMaterial as DM
+from resordan.scrax.dielectric_material import DielectricMaterial as DM
 
 def getNMax(radius, sphere, background, frequency):
     '''

@@ -7,10 +7,10 @@ Created on Thu Nov  9 11:48:12 2023
 
 import numpy as np
 import matplotlib.pyplot as plt
-from tumbling import random_unit_sphere, sph2cart, cart2sph
+from resordan.scrax.tumbling import randomUnitSphere, sph2cart, cart2sph
 
 # Systematically generate uniformly sampled points on unit sphere
-def fibonacci_sphere_sampling(num_points=1, # no. data points
+def fibonacciSphereSampling(num_points=1, # no. data points
                               repeatable=False): # repeatable sample (or add random rotation)
     
     phi = np.pi * (np.sqrt(5.) - 1.) # golden angle [rad]
@@ -27,7 +27,7 @@ def fibonacci_sphere_sampling(num_points=1, # no. data points
         z[idx] = np.sin(theta) * radius        
 
     if not repeatable:
-        theta_rnd, phi_rnd = random_unit_sphere(1) # random rotations
+        theta_rnd, phi_rnd = randomUnitSphere(1) # random rotations
         points = np.stack((x,y,z),axis=0)
         phi, theta = cart2sph(points)
         phi = phi + phi_rnd # rotated azimuth angles
@@ -38,7 +38,7 @@ def fibonacci_sphere_sampling(num_points=1, # no. data points
     return x, y, z
 
 # Systematically generate uniformly sampled points on unit sphere
-def golden_spiral_sampling(num_points=1, # no. data points
+def goldenSpiralSampling(num_points=1, # no. data points
                            repeatable=False): # repeatable sample (or add random rotation)
     
     indices = np.arange(0, num_points, dtype=float) + 0.5
@@ -58,10 +58,10 @@ def golden_spiral_sampling(num_points=1, # no. data points
     return x, y, z
 
 # Random generate uniformly distributed points on unit sphere
-def uniform_random_sampling(num_points=1):
+def uniformRandomSampling(num_points=1):
     
     # Random generate spherical coordinates on unit sphere
-    azimuth, elevation = random_unit_sphere(num_points)
+    azimuth, elevation = randomUnitSphere(num_points)
     
     # Convert to Cartesian coordinates
     points = sph2cart(azimuth, elevation).T
@@ -80,13 +80,13 @@ if __name__=="__main__":
     num_points = 100
     
     # Fibonacci sphere sampling
-    xf, yf, zf = fibonacci_sphere_sampling(num_points)
+    xf, yf, zf = fibonacciSphereSampling(num_points)
     
     # Golden section spiral sampling
-    xg, yg, zg = golden_spiral_sampling(num_points)
+    xg, yg, zg = goldenSpiralSampling(num_points)
     
     # Uniform random sampling of sphere
-    xu, yu, zu = uniform_random_sampling(num_points)
+    xu, yu, zu = uniformRandomSampling(num_points)
     
     # Create a sphere
     r = 1

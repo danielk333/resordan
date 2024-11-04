@@ -65,7 +65,7 @@ def rotation_matrix(rot_axis, # rotation axis (unit sphere vector)
 
 # Rotate point on a unit sphere with specified rotation axis and random 
 # initial rotation angle. Calculate rotating points' position at a given time
-def point_positions(time, # time axis
+def pointPositions(time, # time axis
                     omega, # angular speed [rad/s]
                     rotation_axis): # specified as unit sphere vector
     
@@ -94,7 +94,7 @@ def point_positions(time, # time axis
     return positions
 
 # Random generate points on unit sphere (as (azimuth, elevation))
-def random_unit_sphere(num_points=1):
+def randomUnitSphere(num_points=1):
     
     points = []
     for n in range(num_points):
@@ -110,7 +110,7 @@ def random_unit_sphere(num_points=1):
     return azimuth, elevation
 
 # Simulate tumbling around random rotation axis
-def random_tumbling(angular_speed, # angular speed [rad/s]
+def randomTumbling(angular_speed, # angular speed [rad/s]
                     sample_rate, # sampling rate [Hz]
                     num_points, # number of samples []
                     in_degrees=False): # return angles in degrees (or radians)
@@ -134,7 +134,7 @@ def random_tumbling(angular_speed, # angular speed [rad/s]
     
     # Compute positions during rotation
     k = rotation_axis(azimuth_rad, elevation_rad)
-    positions = point_positions(time, angular_speed, k)
+    positions = pointPositions(time, angular_speed, k)
 
     # Convert to azimuth and elevation angles
     azimuth_angles, elevation_angles = cart2sph(positions)
@@ -146,7 +146,7 @@ def random_tumbling(angular_speed, # angular speed [rad/s]
     return azimuth_angles, elevation_angles
 
 # Simulate tumbling around specified rotation axis
-def fixed_tumbling(angular_speed, # angular speed [rad/s]
+def fixedTumbling(angular_speed, # angular speed [rad/s]
                    sample_rate, # sampling rate [Hz]
                    num_points, # number of samples []
                    rotation_axis, # specified as unit sphere vector
@@ -165,7 +165,7 @@ def fixed_tumbling(angular_speed, # angular speed [rad/s]
     time = np.linspace(0, num_points/sample_rate, num=num_points, endpoint=False)
     
     # Compute positions during rotation
-    positions = point_positions(time, angular_speed, rotation_axis)
+    positions = pointPositions(time, angular_speed, rotation_axis)
 
     # Convert to azimuth and elevation angles
     azimuth_angles, elevation_angles = cart2sph(positions)
@@ -196,13 +196,13 @@ if __name__=="__main__":
     k = rotation_axis(azimuth_rad, elevation_rad)
     
     # Compute positions during rotation
-    positions = point_positions(time, angular_speed, k)
+    positions = pointPositions(time, angular_speed, k)
     
     # Convert to azimuth and elevation angles
     az, el = cart2sph(positions)
     
-    #az, el = random_tumbling(angular_speed, sample_rate, num_points)
-    #az, el = fixed_tumbling(angular_speed, sample_rate, num_points, k)
+    #az, el = randomTumbling(angular_speed, sample_rate, num_points)
+    #az, el = fixedTumbling(angular_speed, sample_rate, num_points, k)
     
     # Plot the rotating point on the unit sphere
     fig1 = plt.figure()

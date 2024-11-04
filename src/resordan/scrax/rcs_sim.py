@@ -4,9 +4,9 @@ import numpy as np
 import math
 import scipy.special as ss
 import mpmath as mp
-import bessel
-import refsystem
-from DielectricMaterial import DielectricMaterial as DM
+import resordan.scrax.bessel
+import resordan.scrax.ref_system
+from resordan.scrax.dielectric_material import DielectricMaterial as DM
 
 
 

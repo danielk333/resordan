@@ -60,7 +60,7 @@ import mpmath as mp
 # This will be applied only to evaluate besselj, bessely functions
 mp.dps = 50
 
-def ric_besselj(nu,x,scale = 1):
+def ricBesselJ(nu,x,scale = 1):
     '''
         Implementation of Riccati-Bessel function
         Inputs: 
@@ -106,7 +106,7 @@ def ric_besselj(nu,x,scale = 1):
 
     return a
 
-def ric_besselj_derivative(nu, x, flag = 1):
+def ricBesselJDerivative(nu, x, flag = 1):
     '''
         translation of KZHU ric_besselj_derivative(nu,x,flag)
         Inputs:
@@ -121,10 +121,10 @@ def ric_besselj_derivative(nu, x, flag = 1):
     tmp = np.matmul(np.ones((len(nu), 1)), np.reshape(np.array(x), (1, M)))
 
     if (flag == 1):
-        J = 0.5*( ric_besselj(nu-1, x) + (1/tmp)*ric_besselj(nu,x) - ric_besselj(nu+1, x) )
+        J = 0.5*( ricBesselJ(nu-1, x) + (1/tmp)*ricBesselJ(nu,x) - ricBesselJ(nu+1, x) )
     elif (flag == 2):
-        J = 0.5 * ( ric_besselj_derivative(nu-1,x) + (1/tmp)*ric_besselj_derivative(nu, x) \
-                    - (1/(tmp**2)) * ric_besselj(nu,x)  - ric_besselj_derivative(nu+1, x) )
+        J = 0.5 * ( ricBesselJDerivative(nu-1,x) + (1/tmp)*ricBesselJDerivative(nu, x) \
+                    - (1/(tmp**2)) * ricBesselJ(nu,x)  - ricBesselJDerivative(nu+1, x) )
     else:
         print('error: check third argument passed to ric_besselj_derivative (flag)')
     
@@ -142,7 +142,7 @@ def ric_besselj_derivative(nu, x, flag = 1):
 
     return J
 
-def ric_bessely(nu, x, scale = 1):
+def ricBesselY(nu, x, scale = 1):
     '''
         Implementation of Riccati-Neumann function
         Inputs: 
@@ -189,7 +189,7 @@ def ric_bessely(nu, x, scale = 1):
 
     return a
 
-def ric_bessely_derivative(nu, x, flag = 1):
+def ricBesselYDerivative(nu, x, flag = 1):
     '''
         Y = ric_bessely_derivative(nu, x, flag) using the recursive
         relationship to calculate the first derivative of the
@@ -211,10 +211,10 @@ def ric_bessely_derivative(nu, x, flag = 1):
     
     tmp = np.matmul(np.ones((N, 1)), np.reshape(np.array(x), (1, M)))
     if (flag == 1):
-        Y = 0.5 * (ric_bessely(nu-1, x) + (1.0/tmp)* ric_bessely(nu,x) - ric_bessely(nu+1, x) )
+        Y = 0.5 * ( ricBesselY(nu-1, x) + (1.0/tmp)* ricBesselY(nu,x) - ricBesselY(nu+1, x) )
     elif (flag == 2):
-        Y = 0.5 * ( ric_bessely_derivative(nu-1,x) + (1/tmp)*ric_bessely_derivative(nu, x) \
-                    - (1/(tmp**2)) * ric_bessely(nu,x)  - ric_bessely_derivative(nu+1, x) )
+        Y = 0.5 * ( ricBesselYDerivative(nu-1,x) + (1/tmp)*ricBesselYDerivative(nu, x) \
+                    - (1/(tmp**2)) * ricBesselY(nu,x)  - ricBesselYDerivative(nu+1, x) )
     else:
         print('error: third argument passed to ric_bessely_derivative must be 1 or 2')
     
@@ -231,7 +231,7 @@ def ric_bessely_derivative(nu, x, flag = 1):
     
     return Y
     
-def ric_besselh(nu,x, K):
+def ricBesselH(nu,x, K):
     '''
         H = ric_besselh(nu, K, x) implement the Hankel function,
         which is defined as
@@ -243,15 +243,15 @@ def ric_besselh(nu,x, K):
                 function of the second kind.
     '''
     if (K == 1):
-        H = ric_besselj(nu,x) + 1j*ric_bessely(nu,x)
+        H = ricBesselJ(nu,x) + 1j*ricBesselY(nu,x)
     elif(K == 2):
-        H = ric_besselj(nu,x) - 1j*ric_bessely(nu,x)
+        H = ricBesselJ(nu,x) - 1j*ricBesselY(nu,x)
     else:
         print('error: third argument passed to ric_besselh must be 1 or 2')
 
     return H
 
-def ric_besselh_derivative(nu, x, K, flag = 1):
+def ricBesselHDerivative(nu, x, K, flag = 1):
     '''
         H = ric_besselh_derivative(nu, K, x) use the recursive relationship
         to calculate the first derivative of the Hankel function.
@@ -266,9 +266,9 @@ def ric_besselh_derivative(nu, x, K, flag = 1):
             flag    1 for the first order derivative; 2 for the second order derivative
     '''
     if (K == 1):
-        H = ric_besselj_derivative(nu,x,flag) + 1j*ric_bessely_derivative(nu,x,flag)
+        H = ricBesselJDerivative(nu,x,flag) + 1j*ricBesselYDerivative(nu,x,flag)
     elif(K == 2):
-        H = ric_besselj_derivative(nu,x,flag) - 1j*ric_bessely_derivative(nu,x,flag)
+        H = ricBesselJDerivative(nu,x,flag) - 1j*ricBesselYDerivative(nu,x,flag)
     else:
         print('error: argument K passed to ric_besselh_derivative must be 1 or 2')
 
