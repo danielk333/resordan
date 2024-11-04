@@ -23,8 +23,8 @@ def getWireRCS(length, # wire length [m]
         incidence, and the angle between the polarization direction and 
         the plane defined by the wire and the direction of incidence
     '''
-    thetar = np.asfarray(elevation + np.pi/2.) # aspect angle [rad]
-    phir = np.asfarray(polangle) # polarisation angle [rad]
+    thetar = np.asarray(elevation + np.pi/2.) # aspect angle [rad]
+    phir = np.asarray(polangle) # polarisation angle [rad]
     c = 2.99792458e8 # speed of light in vacuum [m/s]
     lamda = c / frequency # wavelength (lambda)
     r = radius # kr << 1
@@ -85,7 +85,7 @@ if __name__=="__main__":
     c = 2.99792458e8
     az = []
     el = np.deg2rad(60.)
-    el = np.deg2rad(np.asfarray(list(range(-90,90))))
+    el = np.deg2rad(np.asarray(list(range(-90,90))))
     pol = np.pi/4 # 45.
     
     eps = 1e-6

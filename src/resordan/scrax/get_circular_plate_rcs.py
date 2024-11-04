@@ -19,7 +19,7 @@ def getCircularPlateRCS(radius,  # radius [m]
         its radius, the wave frequency and the elevation angle. The RCS is
         independent of azimuth angle, which is therefore redundant.
     '''
-    phir = np.asfarray(azimuth)  # azimuth angle [rad]
+    phir = np.asarray(azimuth)  # azimuth angle [rad]
     thetar = elevation  # elevation angle [rad]
     c = 2.99792458e8  # speed of light in vacuum [m/s]
     lamda = c / frequency  # wavelength
@@ -86,9 +86,9 @@ if __name__ == "__main__":
     r = 0.225  # radius [m]
     c = 2.99792458e8  # speed of light (in vacuum)
     h = 1.0  # height [m]
-    # el = np.deg2rad(np.asfarray([-90,-60,-45,-30,0,30,45,60,90]))
-    el = np.deg2rad(np.asfarray(list(range(-90, 90))))  # elevation angles
-    # el = np.deg2rad(np.asfarray([45,46,47,48,49,50])  #,51,52,53,54,55]))
+    # el = np.deg2rad(np.asarray([-90,-60,-45,-30,0,30,45,60,90]))
+    el = np.deg2rad(np.asarray(list(range(-90, 90))))  # elevation angles
+    # el = np.deg2rad(np.asarray([45,46,47,48,49,50])  #,51,52,53,54,55]))
     eps = 1e-6
 
     rcs = getCircularPlateRCS(r, fc, 0, el)

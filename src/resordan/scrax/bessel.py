@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import numpy as np
+import mpmath as mp
 
 """
 Created on Thu Aug 10 11:36:40 2023
@@ -49,9 +51,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-import numpy as np
-import mpmath as mp
-
 #
 # Bessel functions
 #
@@ -60,7 +59,8 @@ import mpmath as mp
 # This will be applied only to evaluate besselj, bessely functions
 mp.dps = 50
 
-def ricBesselJ(nu,x,scale = 1):
+
+def ricBesselJ(nu, x, scale = 1):
     '''
         Implementation of Riccati-Bessel function
         Inputs: 
@@ -80,16 +80,16 @@ def ricBesselJ(nu,x,scale = 1):
     M = np.asarray(x).size
     N = np.asarray(nu).size
     if N == 1:
-        nu = np.reshape(nu,(1,))
+        nu = np.reshape(nu, (1,))
     a = np.zeros((N, M), np.complex128)
 
     if (scale != 0 and scale != 1):
         print("incorrect argument ric_besselj (scale)")
         return
 
-    np_besselj = np.frompyfunc(mp.besselj,2,1)
+    np_besselj = np.frompyfunc(mp.besselj, 2, 1)
     for i in range(N):
-    	for j in range(M):
+        for j in range(M):
             if M == 1:
                 rpw = x
             else:
@@ -102,9 +102,10 @@ def ricBesselJ(nu,x,scale = 1):
             elif (scale == 0):
                 # y = np.sqrt(np.pi * rpw / 2) * mp.besselj(nu[i]+0.5, rpw)
                 y = np.sqrt(np.pi * rpw / 2) * np_besselj(nu[i]+0.5, rpw)
-            a[i,j] = complex(y.real, y.imag)
+            a[i, j] = complex(y.real, y.imag)
 
     return a
+
 
 def ricBesselJDerivative(nu, x, flag = 1):
     '''
@@ -121,26 +122,31 @@ def ricBesselJDerivative(nu, x, flag = 1):
     tmp = np.matmul(np.ones((len(nu), 1)), np.reshape(np.array(x), (1, M)))
 
     if (flag == 1):
-        J = 0.5*( ricBesselJ(nu-1, x) + (1/tmp)*ricBesselJ(nu,x) - ricBesselJ(nu+1, x) )
+        J = 0.5*(ricBesselJ(nu-1, x) + (1/tmp)*ricBesselJ(nu, x) - ricBesselJ(nu+1, x))
     elif (flag == 2):
-        J = 0.5 * ( ricBesselJDerivative(nu-1,x) + (1/tmp)*ricBesselJDerivative(nu, x) \
-                    - (1/(tmp**2)) * ricBesselJ(nu,x)  - ricBesselJDerivative(nu+1, x) )
+        J = 0.5 * (
+            ricBesselJDerivative(nu-1, x)
+            + (1/tmp)*ricBesselJDerivative(nu, x)
+            - (1/(tmp**2)) * ricBesselJ(nu, x)
+            - ricBesselJDerivative(nu+1, x)
+        )
     else:
         print('error: check third argument passed to ric_besselj_derivative (flag)')
-    
-    #removing all the zeros from inside the matrix...
-    #f x*nu was 0, then it should become 0 after calculation
+
+    # removing all the zeros from inside the matrix...
+    # f x*nu was 0, then it should become 0 after calculation
     x = np.reshape(np.array(x), (1, M))
     nu = np.reshape(np.array(nu), (len(nu), 1))
 
     tmp1 = np.matmul(np.ones((len(nu), 1)), x)
     J[tmp1 == 0] = 0
 
-    tmp2 = np.matmul(nu, np.ones((1,len(x))))
+    tmp2 = np.matmul(nu, np.ones((1, len(x))))
     if (flag == 1):
-        J[tmp1+tmp2 == 0] = 1;
+        J[tmp1+tmp2 == 0] = 1
 
     return J
+
 
 def ricBesselY(nu, x, scale = 1):
     '''
@@ -166,10 +172,10 @@ def ricBesselY(nu, x, scale = 1):
     if (scale != 0 and scale != 1):
         print("incorrect argument ric_bessely (scale)")
         return
-    
-    np_bessely = np.frompyfunc(mp.bessely,2,1)
+
+    np_bessely = np.frompyfunc(mp.bessely, 2, 1)
     for i in range(0, len(nu)):
-    	for j in range(0, M):
+        for j in range(0, M):
             if M == 1:
                 rpw = x
             else:
@@ -177,17 +183,20 @@ def ricBesselY(nu, x, scale = 1):
             if (scale == 1):
                 y = np.sqrt(np.pi * rpw / 2) * np_bessely(nu[i]+0.5, rpw) \
                     * np.e**(-1*abs(np.imag(rpw)))
-                # y = np.sqrt(np.pi * rpw / 2) * mp.bessely(nu[i]+0.5, rpw) * np.e**(-1*abs(np.imag(rpw)))
+                # y = np.sqrt(np.pi * rpw / 2) 
+                # * mp.bessely(nu[i]+0.5, rpw) 
+                # * np.e**(-1*abs(np.imag(rpw)))
             elif (scale == 0):
                 y = np.sqrt(np.pi * (rpw) / 2) * np_bessely(nu[i]+0.5, rpw)
                 # y = np.sqrt(np.pi * (rpw) / 2) * mp.bessely(nu[i]+0.5, rpw)
-            a[i,j] = complex(y.real, y.imag)
-    
+            a[i, j] = complex(y.real, y.imag)
+
     # handling the case where x is zero because bessely is poorly defined 
-    tmp = np.matmul(np.ones((N,1)), np.reshape(np.array(x), (1, M)))
+    tmp = np.matmul(np.ones((N, 1)), np.reshape(np.array(x), (1, M)))
     a[tmp == 0] = float('-inf')
 
     return a
+
 
 def ricBesselYDerivative(nu, x, flag = 1):
     '''
@@ -208,30 +217,34 @@ def ricBesselYDerivative(nu, x, flag = 1):
     '''
     M = np.asarray(x).size
     N = max(np.shape(nu))
-    
+
     tmp = np.matmul(np.ones((N, 1)), np.reshape(np.array(x), (1, M)))
     if (flag == 1):
-        Y = 0.5 * ( ricBesselY(nu-1, x) + (1.0/tmp)* ricBesselY(nu,x) - ricBesselY(nu+1, x) )
+        Y = 0.5 * (ricBesselY(nu-1, x) + (1.0/tmp) * ricBesselY(nu, x) - ricBesselY(nu+1, x))
     elif (flag == 2):
-        Y = 0.5 * ( ricBesselYDerivative(nu-1,x) + (1/tmp)*ricBesselYDerivative(nu, x) \
-                    - (1/(tmp**2)) * ricBesselY(nu,x)  - ricBesselYDerivative(nu+1, x) )
+        Y = 0.5 * (
+            ricBesselYDerivative(nu-1, x) + (1/tmp)*ricBesselYDerivative(nu, x) 
+            - (1/(tmp**2)) * ricBesselY(nu, x)
+            - ricBesselYDerivative(nu+1, x)
+        )
     else:
         print('error: third argument passed to ric_bessely_derivative must be 1 or 2')
-    
+
     x = np.reshape(np.array(x), (1, M))
     nu = np.reshape(np.array(nu), (N, 1))
 
-    tmp2 = np.matmul(np.ones((N,1)), x)
+    tmp2 = np.matmul(np.ones((N, 1)), x)
     Y[tmp2 == 0] = float('-inf')
-    tmp1 = np.matmul(nu, np.ones((1,M)))
+    tmp1 = np.matmul(nu, np.ones((1, M)))
     if (flag == 1):
         Y[tmp1+tmp2 == 0] = 1
     elif (flag == 2):
         Y[tmp1+tmp2 == 0] = -1
-    
+
     return Y
-    
-def ricBesselH(nu,x, K):
+
+
+def ricBesselH(nu, x, K):
     '''
         H = ric_besselh(nu, K, x) implement the Hankel function,
         which is defined as
@@ -242,14 +255,15 @@ def ricBesselH(nu,x, K):
             K   1 for Hankel's function of the first kind; 2 for Hankel's
                 function of the second kind.
     '''
-    if (K == 1):
-        H = ricBesselJ(nu,x) + 1j*ricBesselY(nu,x)
-    elif(K == 2):
-        H = ricBesselJ(nu,x) - 1j*ricBesselY(nu,x)
+    if K == 1:
+        H = ricBesselJ(nu, x) + 1j*ricBesselY(nu, x)
+    elif K == 2:
+        H = ricBesselJ(nu, x) - 1j*ricBesselY(nu, x)
     else:
         print('error: third argument passed to ric_besselh must be 1 or 2')
 
     return H
+
 
 def ricBesselHDerivative(nu, x, K, flag = 1):
     '''
@@ -259,16 +273,16 @@ def ricBesselHDerivative(nu, x, K, flag = 1):
 
         Inputs:
             nu      order of the riccati-Hankel's function. Must be a column vector
-           
+
             K = 1   if it is Hankel's function of the first kind; K=2 if it is 
                     Hankel's function of the second kind.  
             x       Must be a row evector
             flag    1 for the first order derivative; 2 for the second order derivative
     '''
-    if (K == 1):
-        H = ricBesselJDerivative(nu,x,flag) + 1j*ricBesselYDerivative(nu,x,flag)
-    elif(K == 2):
-        H = ricBesselJDerivative(nu,x,flag) - 1j*ricBesselYDerivative(nu,x,flag)
+    if K == 1:
+        H = ricBesselJDerivative(nu, x, flag) + 1j*ricBesselYDerivative(nu, x, flag)
+    elif K == 2:
+        H = ricBesselJDerivative(nu, x, flag) - 1j*ricBesselYDerivative(nu, x, flag)
     else:
         print('error: argument K passed to ric_besselh_derivative must be 1 or 2')
 

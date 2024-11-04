@@ -129,7 +129,7 @@ if __name__=="__main__":
 
     if plot_rcs_vs_scale:
         # Plot RCS as function of radius to wavelength ratio
-        #el = np.asfarray(list(range(-90,90)))
+        #el = np.asarray(list(range(-90,90)))
         ratio = 5*np.logspace(-2.0, 0.0, num=200)
         rcs, fc = getSphereRCS(r, vacuum, PEC, ratio, sensor_location)
         rcs_dB = 10*np.log10(rcs+1e-5)

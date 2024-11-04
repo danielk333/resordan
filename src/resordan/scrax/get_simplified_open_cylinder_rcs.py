@@ -20,7 +20,7 @@ def getSimplifiedOpenCylinderRCS(radius1, # radius/1st semiaxis of circular/elli
         that the cylinder is open: it has no bases or end pieces.
     '''
     eps = 1e-5 # small number
-    phir = np.asfarray(azimuth) # azimuth angle [rad]
+    phir = np.asarray(azimuth) # azimuth angle [rad]
     thetar = elevation + np.pi/2 # aspect angle [rad]
     c = 2.99792458e8 # speed of light in vacuum [m/s]
     lamda = c / frequency # wavelength
@@ -101,13 +101,13 @@ if __name__=="__main__":
     r1 = r#0.1
     r2 = r1#0.2
     h = 1.0
-    el = np.deg2rad(np.asfarray([-90,-60,-45,-30,0,30,45,60,90]))
+    el = np.deg2rad(np.asarray([-90,-60,-45,-30,0,30,45,60,90]))
     rcs = getSimplifiedOpenCylinderRCS(r1,r2,h,fc,0,el)
     rcs_dB = 10*np.log10(rcs+1e-5)
     
     #print(rcs,rcs_dB)
     
-    el = np.deg2rad(np.asfarray(list(range(-90,90))))
+    el = np.deg2rad(np.asarray(list(range(-90,90))))
     rcs = getSimplifiedOpenCylinderRCS(r1,r2,h,fc,0,el)
     rcs_dB = 10*np.log10(rcs+1e-5)
     
