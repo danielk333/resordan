@@ -14,7 +14,6 @@ REsident Space Object RAdar Data ANalysis
     - spacetrack
     - similaritymeasures
     - sorts
-    - orekit
 
 ## Step 1 - Create virtual environment
 ```sh
@@ -45,15 +44,5 @@ cd ~/git
 git clone --branch develop https://github.com/danielk333/SORTS
 cd ~/git/SORTS
 pip install -e .[develop,mpi,plotting] –verbose
-```
-Additionally run script to install Orekit
-
-```sh
-export JDK_LOC=$JAVA_HOME
-export JCC_JDK=$JAVA_HOME
-./install_orekit.sh jcc
-./install_orekit.sh check
-./install_orekit.sh build
-./install_orekit.sh install
 ```
 

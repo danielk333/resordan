@@ -1,22 +1,19 @@
 from pathlib import Path
-import sys
-import h5py
-import re
 import datetime as dt
 import tempfile
 import shutil
-import subprocess
 from resordan.clustering import algorithm
-from resordan.data.gmf import GMFDataset
 from resordan.data.events import EventsDataset
 from resordan.correlator.beam_rcs_estimator import rcs_estimator
-from resordan.correlator.space_track_download import fetch_tle
+from resordan.correlator.space_track_download import fetch_publish_tle
+from resordan.correlator.beam_correlator import radar_sd_correlator
 
 ISO_FMT = '%Y-%m-%dT%H:%M:%S'
 
 ###############################################################
 # CONFIG
 ###############################################################
+
 
 def str_to_bool(value):
     """convert string to bool"""
@@ -42,10 +39,10 @@ CLUSTER_PARAM_DEFAULTS = dict(
 )
 
 CORRELATE_PARAM_DEFAULTS = dict(
-    std = False,
+    stdev = False,
     jitter = False,
     range_rate_scaling = 0.2,
-    range_scaling = 0.1,
+    range_scaling = 1.0,
     save_states = False,
     target_epoch = None
 )
@@ -62,7 +59,7 @@ PREDICT_PARAM_DEFAULTS = dict(
 # SNR2RCS
 ###############################################################
 
-def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=False):
+def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False):
 
     """
     For a given GMF product, does clustering, correlation and rcs prediction
@@ -119,17 +116,21 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
 
     dst = Path(dst)
     if not dst.exists():
-        raise Exception(f"Out directory does not exists {dst}")
-
-    # make temporary folder
-    if tmp is None:
-        tmp = tempfile.mkdtemp()
+        dst.mkdir(parents=True, exist_ok=True)
+        #raise Exception(f"Out directory does not exists {dst}")
+    
     tmp = Path(tmp)
-    if not tmp.is_dir():
-        raise Exception(f"tmp is not a directory: {tmp}")        
+    if not tmp.exists():
+        tmp.mkdir(parents=True, exist_ok=True)
+    # # make temporary folder   
+    #if tmp is None:
+    #    tmp = tempfile.mkdtemp()
+    #tmp = Path(tmp)
+    #if not tmp.is_dir():
+    #    raise Exception(f"tmp is not a directory: {tmp}")        
 
-    tle_file = tmp / "tle.txt"
     events_file = tmp / "events.pkl"
+    tle_file = tmp / "tle.txt"
     correlations_dir = tmp
 
     ###########################################
@@ -138,16 +139,14 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
 
     if verbose:
         print('CLUSTERING:')
-    if not events_file.exists() or clobber:
-        gmf_files = list(sorted([file for file in src.rglob('*.h5') if file.is_file()]))
-        gmf_dataset = GMFDataset.from_files(gmf_files)
 
+    if not events_file.exists() or clobber:
         CLUSTER_PARAMS = {**CLUSTER_PARAM_DEFAULTS}
         for key in CLUSTER_PARAM_DEFAULTS:
             if cfg.has_option('CLUSTER', key):
                 CLUSTER_PARAMS[key] = eval(get_value(cfg, 'CLUSTER', key))
         
-        events_dataset = algorithm.snr_peaks_detection(gmf_dataset, **CLUSTER_PARAMS)
+        events_dataset = algorithm.event_detection(src, **CLUSTER_PARAMS)
         EventsDataset.to_pickle(events_dataset, events_file)
         if verbose:
             print(f"{len(events_dataset.events)} detections")
@@ -160,12 +159,11 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
 
     if not tle_file.exists() or clobber:
 
-        # get timestamp for start of gmf product
-        with h5py.File(gmf_files[0], "r") as f:        
-            epoch = float(f['epoch_unix'][()])
-            epoch_dt = dt.datetime.utcfromtimestamp(epoch)
+        epoch = events_dataset.events[0].epoch
+        epoch_dt = dt.datetime.fromtimestamp(epoch, tz=dt.timezone.utc)
 
-        lines = fetch_tle(epoch_dt, st_user, st_passwd)
+        # get tle
+        lines = fetch_publish_tle(epoch_dt, st_user, st_passwd)
 
         if verbose:
             print(f"{len(lines)} lines")
@@ -185,31 +183,26 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
     for key in CORRELATE_PARAM_DEFAULTS:
         if not cfg.has_option('CORRELATE', key):
             continue
-        if key in ['jitter', 'std', 'save_states']:
+        if key in ['jitter', 'stdev', 'save_states']:
             CORRELATE_PARAMS[key] = str_to_bool(get_value(cfg, 'CORRELATE', key))
+        elif key in ['range_scaling', 'range_rate_scaling']:
+            CORRELATE_PARAMS[key] = cfg.getfloat('CORRELATE', key)
         else:
             CORRELATE_PARAMS[key] = get_value(cfg, 'CORRELATE', key)
 
-    args = [
-        "rcorrelate", "eiscat_uhf",
+    radar_sd_correlator(
+        "eiscat_uhf",
         str(tle_file),
         str(events_file.parent),
         str(correlations_dir),
-    ]
-    if CORRELATE_PARAMS['std']:
-        args.append("--std")
-    if CORRELATE_PARAMS['jitter']:
-        args.append("--jitter")
-    if CORRELATE_PARAMS['save_states']:
-        args.append("--save-states")
-    if clobber:
-        args.append("--clobber")
-    args.extend(['--range-rate-scaling', str(CORRELATE_PARAMS['range_rate_scaling'])])
-    args.extend(['--range-scaling', str(CORRELATE_PARAMS['range_scaling'])])
-
-    proc = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr, text=True)
-    # Wait for the process to complete and get the output
-    stdout, stderr = proc.communicate()
+        stdev=CORRELATE_PARAMS['stdev'],
+        jitter=CORRELATE_PARAMS['jitter'],
+        savestates=CORRELATE_PARAMS['save_states'],
+        clobber=clobber,
+        rangeratescaling=CORRELATE_PARAMS['range_rate_scaling'],
+        rangescaling=CORRELATE_PARAMS['range_scaling'],
+        targetepoch=CORRELATE_PARAMS['target_epoch']
+    )
 
     ###########################################
     # PREDICT
@@ -225,8 +218,6 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False,  cleanup=Fals
             PREDICT_PARAMS[key] = cfg.getfloat('PREDICT', key)
         if key in ['format']:
             PREDICT_PARAMS[key] = get_value(cfg, 'PREDICT', key)
-
-
 
     # rcs estimate
     rcs_estimator(

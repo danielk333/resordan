@@ -1,10 +1,8 @@
 import logging
 from dataclasses import asdict, dataclass
-
 import numpy as np
-
-from ..data.events import EventDataset, EventsDataset
-from ..data.gmf import GMFDataset
+from resordan.data.events import EventDataset, EventsDataset
+from resordan.data.gmf import GMFDataset
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +38,9 @@ def _detect_in_window(
     r: np.ndarray,
     v: np.ndarray,
     a: np.ndarray,
-    cfg: DetectorConfig,
+    cfg: DetectorConfig
 ) -> bool:
+
     """Run detection for a window of data."""
     if t.size < cfg.min_n_samples:
         logger.warning(f"Not enough samples for polynomial fit ({t.size}).")
@@ -162,3 +161,64 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
 
     logger.info(f"Detected {len(events)} targets.")
     return EventsDataset(meta=gmf_dataset.meta, detector_config=asdict(cfg), events=events)
+
+
+def event_detection(src, **params):
+
+    """
+    does snr_peaks_detection per directory (to limit memory usage)
+
+    Parameters
+    ----------
+    src: str
+        path to GMF product folder, or subfolder within GMF product
+
+    Returns
+    -------
+        EventsDataset representing detected objects, or None        
+    """
+
+    if not src.is_dir():
+        raise Exception(f"src is not directory {src}")
+
+    def process(subdir):
+        gmf_files = [f for f in subdir.iterdir() if f.is_file() and f.suffix == ".h5"]
+        if not gmf_files: 
+            return
+        gmf_dataset = GMFDataset.from_files(list(sorted(gmf_files)))
+        return snr_peaks_detection(gmf_dataset, **params)
+
+    def results(dirs):
+        """run process across dirs and include results if not None"""
+        results = []
+        for d in dirs:
+            res = process(d)
+            if res is not None:
+                results.append(res)
+        return results
+
+    # first, assume that src is a subfolder in a GMF product
+    # if it is not the result will be empty
+    # then assume that it is a GMF product containing subfolders
+    ed_list = results([src])
+    if not ed_list:
+        ed_list = results([d for d in sorted(src.iterdir()) if d.is_dir()])
+
+    # check if any data was found
+    if not ed_list:
+        return None
+
+    # event numbering
+    event_counter = 0
+    for ed in ed_list:
+        for event in ed.events:
+            event.event_number = event_counter
+            event_counter += 1
+
+    # return events dataset
+    meta = ed_list[0].meta
+    detector_config = ed_list[0].detector_config
+    elist = []
+    for ed in ed_list: 
+        elist.extend(ed.events)
+    return EventsDataset(meta=meta, detector_config=detector_config, events=elist)
