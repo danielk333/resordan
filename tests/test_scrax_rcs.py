@@ -4,7 +4,6 @@ import matplotlib
 from matplotlib import pyplot as plt
 from resordan.scrax.get_circular_plate_rcs import getCircularPlateRCS
 
-
 # Fixture to set up matplotlib for all tests
 @pytest.fixture(autouse=True)
 def setup_matplotlib():

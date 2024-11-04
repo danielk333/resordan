@@ -278,7 +278,7 @@ data_generated = True
 #
 
 if not data_generated:
-    regdata = loadmat('dev/git/resordan/tests/data/regvec.mat')
+    regdata = loadmat('~/dev/git/resordan/tests/data/regvec.mat')
     regvec = regdata.get("regressor")
     y = regdata.get("regressand")
 
@@ -536,6 +536,6 @@ for idx in range(L):
     # Plot t-SNE space
     fig = plt.figure(idx+4)
     ax = fig.add_subplot(projection='3d')
-    ax.scatter(X_tsne[:,0], X_tsne[:,1], X_tsne[:,2], c=col)
+    ax.scatter(X_tsne[:,0], X_tsne[:,1], X_tsne[:,2])#, c=col)
     plt.show()
 
