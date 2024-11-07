@@ -5,11 +5,13 @@ Created on Wed Apr 10 17:09:21 2024
 @author: stia
 """
 
+import os
 import numpy as np
 from numpy.random import uniform
 from scipy.io import savemat
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
+import pickle
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
@@ -232,7 +234,7 @@ data_generated = True
 #
 
 if not data_generated:
-    regdata = loadmat('~/dev/git/resordan/tests/data/regvec.mat')
+    regdata = loadmat('/home/AD.NORCERESEARCH.NO/stia/dev/git/resordan/tests/data/regvec.mat')
     regvec = regdata.get("regressor")
     y = regdata.get("regressand")
 
@@ -310,6 +312,13 @@ for idx in range(L):
     # Fit regression model
     print("Fitting regression model ...")
     reg.fit(X_train, y_train)
+    
+    # Save regression model
+    dir_name = "/home/AD.NORCERESEARCH.NO/stia/dev/git/resordan/tests/data/"
+    file_name = "size_predict_n" + str(n_rcs[idx])
+    ext = "pickle" # file type extension
+    file_path = os.path.join(dir_name, file_name + os.extsep + ext)
+    pickle.dump(reg, open(file_path, "wb"))
 
     # Make predictions
     print("Making predictions ...")
@@ -431,10 +440,6 @@ ax43.semilogx(np.array(n_rcs), mape[:,4], label='sph')
 ax43.set_title("MAPE")
 ax43.set_xlabel("No. data points")
 ax43.legend()        
-
-#%%
-
-# Test sequential clustering and regression
 
 #%%
 

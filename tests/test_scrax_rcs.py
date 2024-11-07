@@ -80,3 +80,9 @@ def test_snr_prediction():
         assert res is not None
 
 
+def test_size_shape_estimator(rcs, model):
+    
+    # Size prediction
+    max_dim = model.predict(rcs)
+    
+    return {"xSectMaxPred": max_dim}
