@@ -39,3 +39,11 @@ def test_circular_plate(setup_matplotlib):
     plt.show()
 
     assert True
+
+@pytest.mark.interactive
+def test_size_shape_estimator(rcs, model):
+    
+    # Size prediction
+    max_dim = model.predict(rcs)
+    
+    return {"xSectMaxPred": max_dim}
