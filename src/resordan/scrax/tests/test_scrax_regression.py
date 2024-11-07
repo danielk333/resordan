@@ -7,7 +7,6 @@ Created on Wed Apr 10 17:09:21 2024
 
 import numpy as np
 from numpy.random import uniform
-from scipy.stats import skew, kurtosis
 from scipy.io import savemat
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
@@ -20,6 +19,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolu
 from sklearn.manifold import TSNE
 from resordan.scrax.dielectric_material import DielectricMaterial
 from resordan.scrax.space_debris import DebrisMeasurement, DebrisObject
+from resordan.scrax.features import test_statistics, stat_names
 
 # Define measurement setup
 #fc = 2.24e8 # EISCAT VHF radar frequency
@@ -69,41 +69,6 @@ data_generated = False
 
 #%%
 
-# Define 1/2-order moment
-def halfordermoment(data):
-    
-    return np.mean(np.sqrt(data))
-
-# Name tags of test statistics
-statnames = ["mean", "variance", "skewness", "kurtosis", 
-             "log-mean", "log-variance", "log-skewness", "log-kurtosis",
-             "half-order moment"]
-
-# Compute test statistics (regression features)
-def teststatistics(rcs):
-
-    # Allocate feature vector
-    featvec = np.zeros((n_var,), dtype=float)
-    
-    # RCS on logarithmic scale
-    logrcs = np.log(rcs)
-    logrcs[np.isinf(logrcs)] = np.nan
-
-    # Compute feature vector
-    featvec[0] = np.mean(rcs) # mean
-    featvec[1] = np.var(rcs) # variance
-    featvec[2] = skew(rcs, bias=False) # skewness (G1)
-    featvec[3] = kurtosis(rcs, bias=False) # kurtosis
-    featvec[4] = np.nanmean(logrcs) # log-mean
-    featvec[5] = np.nanvar(logrcs) # log-variance
-    featvec[6] = skew(logrcs, bias=False, nan_policy='omit') # log-skewness
-    featvec[7] = kurtosis(logrcs, bias=False, nan_policy='omit') # log-kurtosis
-    featvec[8] = halfordermoment(rcs) # half-order moment
-    
-    return featvec
-
-#%%
-
 #
 # Cylinder
 #
@@ -127,18 +92,7 @@ for idx in range(L): # loop RCS sample sizes
         # Generate RCS sample
         CC = DebrisObject(radius=r[idy], height=h[idy], objtype='ClosedCylinder')
         rcs = CC.measure(eiscat, ns, sampling_method)
-        # logrcs = np.log(rcs)
-        # logrcs[np.isinf(logrcs)] = np.nan
-        regvec[idy,:,idx] = teststatistics(rcs)
-        # regvec[idy,0,idx] = np.mean(rcs) # mean
-        # regvec[idy,1,idx] = np.var(rcs) # variance
-        # regvec[idy,2,idx] = skew(rcs, bias=False) # skewness (G1)
-        # regvec[idy,3,idx] = kurtosis(rcs, bias=False) # kurtosis
-        # regvec[idy,4,idx] = np.nanmean(logrcs) # log-mean
-        # regvec[idy,5,idx] = np.nanvar(logrcs) # log-variance
-        # regvec[idy,6,idx] = skew(logrcs, bias=False, nan_policy='omit') # log-skewness
-        # regvec[idy,7,idx] = kurtosis(logrcs, bias=False, nan_policy='omit') # log-kurtosis
-        # regvec[idy,8,idx] = halfordermoment(rcs) # half-order moment
+        regvec[idy,:,idx] = test_statistics(rcs)
 
 y[0:n_stat] = d # regressand vector
 
@@ -164,7 +118,7 @@ for idx in range(L): # loop RCS sample sizes
         rcs = CP.measure(eiscat, ns, sampling_method)
         # Compute test statistics (feature vector)
         idz = idy + n_stat
-        regvec[idz,:,idx] = teststatistics(rcs)
+        regvec[idz,:,idx] = test_statistics(rcs)
 
 y[n_stat:2*n_stat] = d # regressand vector
 
@@ -190,7 +144,7 @@ for idx in range(L): # loop RCS sample sizes
         rcs = SP.measure(eiscat, ns, sampling_method)
         # Compute test statistics (feature vector)
         idz = idy + n_stat * 2
-        regvec[idz,:,idx] = teststatistics(rcs)
+        regvec[idz,:,idx] = test_statistics(rcs)
 
 y[2*n_stat:3*n_stat] = d # regressand vector
 
@@ -219,7 +173,7 @@ for idx in range(L): # loop RCS sample sizes
         rcs = Wire.measure(eiscat, ns, sampling_method)
         # Compute test statistics (feature vector)
         idz = idy + n_stat * 3
-        regvec[idz,:,idx] = teststatistics(rcs)
+        regvec[idz,:,idx] = test_statistics(rcs)
 
 y[3*n_stat:4*n_stat] = d # regressand vector
 
@@ -251,7 +205,7 @@ for idx in range(L): # loop RCS sample sizes
         rcs = Sph.measure(eiscat, ns, sampling_method)
         # Compute test statistics (feature vector)
         idz = idy + n_stat * 4
-        regvec[idz,:,idx] = teststatistics(rcs)
+        regvec[idz,:,idx] = test_statistics(rcs)
         if not np.mod(idy,100):
             print(idx, idy)
             print(regvec[idz,:,idx])
@@ -341,6 +295,7 @@ elif algorithm == "SVR": # Support vector regression
 mse = np.zeros((L,1)) # mean squared error
 mae = np.zeros((L,1)) # mean absolute error
 mape = np.zeros((L,1)) # mean absolute percentage error
+statnames = stat_names() # names of test statistics (features)
 
 #for idx in range(1):
 for idx in range(L):
