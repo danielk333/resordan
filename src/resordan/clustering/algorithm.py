@@ -221,4 +221,5 @@ def event_detection(src, **params):
     elist = []
     for ed in ed_list: 
         elist.extend(ed.events)
+    
     return EventsDataset(meta=meta, detector_config=detector_config, events=elist)

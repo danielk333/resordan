@@ -117,17 +117,10 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
     dst = Path(dst)
     if not dst.exists():
         dst.mkdir(parents=True, exist_ok=True)
-        #raise Exception(f"Out directory does not exists {dst}")
     
     tmp = Path(tmp)
     if not tmp.exists():
         tmp.mkdir(parents=True, exist_ok=True)
-    # # make temporary folder   
-    #if tmp is None:
-    #    tmp = tempfile.mkdtemp()
-    #tmp = Path(tmp)
-    #if not tmp.is_dir():
-    #    raise Exception(f"tmp is not a directory: {tmp}")        
 
     events_file = tmp / "events.pkl"
     tle_file = tmp / "tle.txt"
