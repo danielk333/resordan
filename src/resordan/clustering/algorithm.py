@@ -184,25 +184,25 @@ def event_detection(src, **params):
     def process(subdir):
         gmf_files = [f for f in subdir.iterdir() if f.is_file() and f.suffix == ".h5"]
         if not gmf_files: 
-            return
+            return None, None
         gmf_dataset = GMFDataset.from_files(list(sorted(gmf_files)))
-        return snr_peaks_detection(gmf_dataset, **params)
+        return [snr_peaks_detection(gmf_dataset, **params), gmf_dataset]
 
     def results(dirs):
         """run process across dirs and include results if not None"""
         results = []
         for d in dirs:
-            res = process(d)
+            res, gmf_dataset = process(d)
             if res is not None:
                 results.append(res)
-        return results
+        return results, gmf_dataset
 
     # first, assume that src is a subfolder in a GMF product
     # if it is not the result will be empty
     # then assume that it is a GMF product containing subfolders
-    ed_list = results([src])
+    ed_list, gmf_dataset = results([src])
     if not ed_list:
-        ed_list = results([d for d in sorted(src.iterdir()) if d.is_dir()])
+        ed_list, gmf_dataset = results([d for d in sorted(src.iterdir()) if d.is_dir()])
 
     # check if any data was found
     if not ed_list:
@@ -221,4 +221,5 @@ def event_detection(src, **params):
     elist = []
     for ed in ed_list: 
         elist.extend(ed.events)
-    return EventsDataset(meta=meta, detector_config=detector_config, events=elist)
+    
+    return EventsDataset(meta=meta, detector_config=detector_config, events=elist), gmf_dataset

@@ -27,8 +27,6 @@ def main():
     dst = Path(args.dst)
     if not dst.exists():
         dst.mkdir(parents=True, exist_ok=True)
-        #print(f"Out directory does not exists {dst}")
-        #return
 
     # snr2rcs config file
     configfile = Path(args.cfg)

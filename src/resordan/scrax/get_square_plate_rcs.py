@@ -17,7 +17,7 @@ def getSquarePlateRCS(side, # side length [m]
         its side length, the wave frequency, the azimuth angle and the
         elevation angle.
     '''
-    phir = np.asfarray(azimuth) # azimuth angle [rad]
+    phir = np.asarray(azimuth) # azimuth angle [rad]
     thetar = elevation # elevation angle [rad]
     c = 2.99792458e8 # speed of light in vacuum [m/s]
     lamda = c / frequency # wavelength
@@ -71,7 +71,7 @@ if __name__=="__main__":
     fc = uhf
     a = 0.225
     c = 2.99792458e8
-    el = np.deg2rad(np.asfarray(list(range(-90,90))))
+    el = np.deg2rad(np.asarray(list(range(-90,90))))
     
     eps = 1e-6
     rcs = getSquarePlateRCS(a,fc,0,el)

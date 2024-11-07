@@ -35,10 +35,10 @@ def main(input_args=None):
 
     # Perform cluster detection. The selection parameters can be modified
     if not detector_params:
-        events_dataset, gmf_dataset = algorithm.event_detection(args.src)
+        events_dataset, gmf_dataset = algorithm.event_detection(Path(args.src))
     else:
         print(detector_params)
-        events_dataset, gmf_dataset = algorithm.event_detection(args.src,**detector_params)
+        events_dataset, gmf_dataset = algorithm.event_detection(Path(args.src),**detector_params)
 
     if args.verbose:
         print(events_dataset)
