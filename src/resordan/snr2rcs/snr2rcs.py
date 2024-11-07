@@ -139,7 +139,7 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
             if cfg.has_option('CLUSTER', key):
                 CLUSTER_PARAMS[key] = eval(get_value(cfg, 'CLUSTER', key))
         
-        events_dataset = algorithm.event_detection(src, **CLUSTER_PARAMS)
+        events_dataset, gmf_dataset = algorithm.event_detection(src, **CLUSTER_PARAMS)
         EventsDataset.to_pickle(events_dataset, events_file)
         if verbose:
             print(f"{len(events_dataset.events)} detections")
