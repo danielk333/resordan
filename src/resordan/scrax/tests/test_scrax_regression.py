@@ -232,7 +232,7 @@ data_generated = True
 #
 
 if not data_generated:
-    regdata = loadmat('~/dev/git/resordan/tests/data/regvec.mat')
+    regdata = loadmat('/home/AD.NORCERESEARCH.NO/stia/dev/git/resordan/tests/data/regvec.mat')
     regvec = regdata.get("regressor")
     y = regdata.get("regressand")
 

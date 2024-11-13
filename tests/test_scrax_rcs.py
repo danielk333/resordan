@@ -29,7 +29,6 @@ def test_circular_plate(setup_matplotlib):
     rcs = getCircularPlateRCS(r, fc, 0, el)
     rcs_dB = 10*np.log10(rcs+eps)
 
-    # print(rcs)
     plt.plot(el.flatten(), rcs_dB.flatten())
     plt.show()
 
@@ -38,7 +37,7 @@ def test_circular_plate(setup_matplotlib):
     assert True
 
 
-def test_snr_prediction():
+def test_size_prediction():
 
     rcs_data = np.array([
         1.26037036e+00, 8.49878611e+00, 4.74602680e+01, 1.63479929e+01,
@@ -55,34 +54,22 @@ def test_snr_prediction():
     
     with tempfile.TemporaryDirectory() as temp_dir:
 
-        model_file = Path(temp_dir) / "model.pickle"
         snr_file = Path(temp_dir) / "snr.pickle"
+        model_file = Path(__file__).parent.parent / "src/resordan/scrax/models" / "size_predict_n10.pickle"
 
         # make mockup file for rcs data
         with open(snr_file, "wb") as f:
-            pickle.dump(data_dict, f)
-
-        # make mockup file for model
-        with open(model_file, "wb") as f:
             pickle.dump(data_dict, f)
 
         # make task list
         tasks = [("satid", "passid", str(snr_file))]
 
         # load model
-        with open(snr_file, "rb") as f:
+        with open(model_file, "rb") as f:
             model = pickle.load(f)
-
+            
         # process
         results = process_size_shape_estimator(tasks, model)
         assert len(results) > 0
         satid, passid, fname, res = results[0]
         assert res is not None
-
-
-def test_size_shape_estimator(rcs, model):
-    
-    # Size prediction
-    max_dim = model.predict(rcs)
-    
-    return {"xSectMaxPred": max_dim}

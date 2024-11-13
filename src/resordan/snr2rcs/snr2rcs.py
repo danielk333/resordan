@@ -226,6 +226,11 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
         fileformat=PREDICT_PARAMS['format'],
         verbose=verbose
     )
+    
+    #
+    # size estimate
+    #
+    #
 
     ###########################################
     # CLEANUP

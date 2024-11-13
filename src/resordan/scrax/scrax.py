@@ -1,15 +1,25 @@
-from pathlib import Path
+import numpy as np
 import pickle
+from pathlib import Path
+from resordan.scrax.features import test_statistics
 
 SNR_PREDICTION_FILENAME = "correlated_snr_prediction.pickle"
 
 
 def size_shape_estimator(rcs_data, model):
-    """
-    size shape estimation for the rcs data of a single pass
-    """
-    return {"estimate": 3.14}
-
+    
+    # Compute feature vector
+    fvec = test_statistics(rcs_data)
+    fvec[np.isnan(fvec)] = 0 # Replace NaN values with zeros
+    fvec[fvec<1e-6] = 0 # Replace small values with zeros
+    
+    # Reshape as (n_objects=1, n_features)
+    fvec = fvec.reshape(1, fvec.size)
+    
+    # Size prediction
+    max_dim = model.predict(fvec)
+    
+    return {"xSectMaxPred": max_dim}
 
 def tasks_size_shape_estimator(src):
     """generate estimation tasks for a src product"""
@@ -27,11 +37,11 @@ def process_size_shape_estimator(tasks, model):
     (satid, passid, snr_prediction_file)
     """    
     results = []
-    for satid, passid, snr_prediction_file in tasks:
-        with open(snr_prediction_file, 'rb') as file:
+    for satid, passid, size_prediction_file in tasks:
+        with open(size_prediction_file, 'rb') as file:
             data = pickle.load(file)
             estimate = size_shape_estimator(data["rcs_data"], model)
-            results.append((satid, passid, snr_prediction_file, estimate))
+            results.append((satid, passid, size_prediction_file, estimate))
     return results
 
 
@@ -56,8 +66,7 @@ def scrax(data_dir, model_file, logger=None):
     for satid, passid, snr_prediction_file, estimate in results:
         with open(snr_prediction_file, 'rb') as file:
             data = pickle.load(file)
-            print(data["estimate"])
-            data["estimate"] = estimate
+            data.update(**estimate)
         with open(snr_prediction_file, 'wb') as file:
             pickle.dump(data, file)
 
