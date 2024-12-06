@@ -75,11 +75,14 @@ def scrax(data_dir, model_file, logger=None):
 
 if __name__ == '__main__':
 
-    # test input
-    src = "/cluster/projects/p106119-SpaceDebrisRadarCharacterization/rcs/leo_bpark_2.1u_EI-20240822-UHF"
-    src = "./tmp"
-    model = "correlated_snr_prediction.pickle"
-    scrax(src, model)
+    from pathlib import Path
+    import importlib.resources
+
+    PROJECT = Path("/cluster/projects/p106119-SpaceDebrisRadarCharacterization")
+    SOURCE = PROJECT / "rcs/leo_bpark_2.1u_EI-20240822-UHF"
+
+    with importlib.resources.path('resordan.scrax.models', "size_predict_n10.pickle") as MODEL:
+        scrax(str(SOURCE), str(MODEL))
 
 
     
