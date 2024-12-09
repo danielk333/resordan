@@ -21,9 +21,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolu
 from sklearn.manifold import TSNE
 from resordan.scrax.dielectric_material import DielectricMaterial
 from resordan.scrax.space_debris import DebrisMeasurement, DebrisObject
-from resordan.scrax.features import test_statistics, stat_names
+from resordan.scrax.features import compute_feature_vector, stat_names
 
-# Define measurement setup
+# Define measurement setupte
 #fc = 2.24e8 # EISCAT VHF radar frequency
 #radar_name = 'EISCAT VHF radar'
 fc = 9.30e8 # EISCAT UHF radar frequency
@@ -67,152 +67,151 @@ l2rmax = 1000 # maximum r/l ratio
 regvec = np.zeros((n_stat*n_obj, n_var, L), dtype=float)
 y = np.zeros(n_stat*n_obj, dtype=float)
 
-data_generated = False
+generate_data = False
 
 #%%
 
-#
-# Cylinder
-#
-
-# Random generate radius and height on logarithmic scale
-logr = uniform(np.log(rmin), np.log(rmax), n_stat)
-r = np.exp(logr) # radius
-logh = uniform(np.log(hmin), np.log(hmax), n_stat)
-h = np.exp(logh) # height
-#logl = uniform(np.log(lmin), np.log(lmax), n_stat)
-#l = np.exp(logl) # length
-#l2r = uniform(l2rmin, l2rmax, n_stat)
-d = np.sqrt(np.power(h,2) + np.power(2*r,2)) # diagonal
-
-# Generate training dataset
-print("Generating test RCS samples for a cylinder.")
-for idx in range(L): # loop RCS sample sizes
-    ns = n_rcs[idx] # No. RCS samples per test statistic
-    print("Generating test statistics for RCS samples of length", ns, " ...")
-    for idy in range(n_stat): # loop RCS samples
-        # Generate RCS sample
-        CC = DebrisObject(radius=r[idy], height=h[idy], objtype='ClosedCylinder')
-        rcs = CC.measure(eiscat, ns, sampling_method)
-        regvec[idy,:,idx] = test_statistics(rcs)
-
-y[0:n_stat] = d # regressand vector
+if (generate_data):
+    #
+    # Cylinder
+    #
+    
+    # Random generate radius and height on logarithmic scale
+    logr = uniform(np.log(rmin), np.log(rmax), n_stat)
+    r = np.exp(logr) # radius
+    logh = uniform(np.log(hmin), np.log(hmax), n_stat)
+    h = np.exp(logh) # height
+    d = np.sqrt(np.power(h,2) + np.power(2*r,2)) # diagonal
+    
+    # Generate training dataset
+    print("Generating test RCS samples for a cylinder.")
+    for idx in range(L): # loop RCS sample sizes
+        ns = n_rcs[idx] # No. RCS samples per test statistic
+        print("Generating test statistics for RCS samples of length", ns, " ...")
+        for idy in range(n_stat): # loop RCS samples
+            # Generate RCS sample
+            CC = DebrisObject(radius=r[idy], height=h[idy], objtype='ClosedCylinder')
+            rcs = CC.measure(eiscat, ns, sampling_method)
+            regvec[idy,:,idx] = compute_feature_vector(rcs)
+    
+    y[0:n_stat] = d # regressand vector
 
 #%%
 
-#
-# Circular plate
-#
-
-# Random generate radius on logarithmic scale
-logr = uniform(np.log(rmin), np.log(rmax), n_stat)
-r = np.exp(logr) # radius
-d = 2 * r # diagonal
-
-# Generate training dataset
-print("Simulating RCS samples for a circular plate.")
-for idx in range(L): # loop RCS sample sizes
-    ns = n_rcs[idx] # No. RCS samples per test statistic
-    print("Generating test statistics for RCS samples of length", ns, " ...")
-    for idy in range(n_stat): # loop RCS samples
-        # Generate RCS sample
-        CP = DebrisObject(radius=r[idy], objtype='CircularPlate')
-        rcs = CP.measure(eiscat, ns, sampling_method)
-        # Compute test statistics (feature vector)
-        idz = idy + n_stat
-        regvec[idz,:,idx] = test_statistics(rcs)
-
-y[n_stat:2*n_stat] = d # regressand vector
-
-#%%
-
-#
-# Square plate
-#
-
-# Random generate edge length on logarithmic scale
-logr = uniform(np.log(rmin), np.log(rmax), n_stat)
-r = np.exp(logr) # radius
-d = np.sqrt(2) * r # diagonal
-
-# Generate training dataset
-print("Simulating RCS samples for a square plate.")
-for idx in range(L): # loop RCS sample sizes
-    ns = n_rcs[idx] # No. RCS samples per test statistic
-    print("Generating test statistics for RCS samples of length", ns, " ...")
-    for idy in range(n_stat): # loop RCS samples
-        # Generate RCS sample
-        SP = DebrisObject(length=r[idy], objtype='SquarePlate')
-        rcs = SP.measure(eiscat, ns, sampling_method)
-        # Compute test statistics (feature vector)
-        idz = idy + n_stat * 2
-        regvec[idz,:,idx] = test_statistics(rcs)
-
-y[2*n_stat:3*n_stat] = d # regressand vector
+if (generate_data):
+    #
+    # Circular plate
+    #
+    
+    # Random generate radius on logarithmic scale
+    logr = uniform(np.log(rmin), np.log(rmax), n_stat)
+    r = np.exp(logr) # radius
+    d = 2 * r # diagonal
+    
+    # Generate training dataset
+    print("Simulating RCS samples for a circular plate.")
+    for idx in range(L): # loop RCS sample sizes
+        ns = n_rcs[idx] # No. RCS samples per test statistic
+        print("Generating test statistics for RCS samples of length", ns, " ...")
+        for idy in range(n_stat): # loop RCS samples
+            # Generate RCS sample
+            CP = DebrisObject(radius=r[idy], objtype='CircularPlate')
+            rcs = CP.measure(eiscat, ns, sampling_method)
+            # Compute test statistics (feature vector)
+            idz = idy + n_stat
+            regvec[idz,:,idx] = compute_feature_vector(rcs)
+    
+    y[n_stat:2*n_stat] = d # regressand vector
 
 #%%
 
-#
-# Wire
-#
-
-# Random generate radius on logarithmic scale
-logl = uniform(np.log(lmin), np.log(lmax), n_stat)
-l = np.exp(logl) # length
-l2r = uniform(l2rmin, l2rmax, n_stat) # length/radius ratio
-r = l / l2r # radius
-#d = l # diagonal
-d = np.sqrt(np.power(l,2) + np.power(2*r,2)) # diagonal
-
-# Generate training dataset
-print("Simulating test RCS samples for a wire.")
-for idx in range(L): # loop RCS sample sizes
-    ns = n_rcs[idx] # No. RCS samples per test statistic
-    print("Generating test statistics for RCS samples of length", ns, " ...")
-    for idy in range(n_stat): # loop RCS samples
-        # Generate RCS sample
-        Wire = DebrisObject(radius=r[idy], length=l[idy], objtype='Wire')
-        rcs = Wire.measure(eiscat, ns, sampling_method)
-        # Compute test statistics (feature vector)
-        idz = idy + n_stat * 3
-        regvec[idz,:,idx] = test_statistics(rcs)
-
-y[3*n_stat:4*n_stat] = d # regressand vector
+if (generate_data):
+    #
+    # Square plate
+    #
+    
+    # Random generate edge length on logarithmic scale
+    logr = uniform(np.log(rmin), np.log(rmax), n_stat)
+    r = np.exp(logr) # radius
+    d = np.sqrt(2) * r # diagonal
+    
+    # Generate training dataset
+    print("Simulating RCS samples for a square plate.")
+    for idx in range(L): # loop RCS sample sizes
+        ns = n_rcs[idx] # No. RCS samples per test statistic
+        print("Generating test statistics for RCS samples of length", ns, " ...")
+        for idy in range(n_stat): # loop RCS samples
+            # Generate RCS sample
+            SP = DebrisObject(length=r[idy], objtype='SquarePlate')
+            rcs = SP.measure(eiscat, ns, sampling_method)
+            # Compute test statistics (feature vector)
+            idz = idy + n_stat * 2
+            regvec[idz,:,idx] = compute_feature_vector(rcs)
+            
+    y[2*n_stat:3*n_stat] = d # regressand vector
 
 #%%
 
-regdata = {"regressor":regvec, "regressand":y}
-savemat('regvec4.mat', regdata)
+if (generate_data):
+    #
+    # Wire
+    #
+    
+    # Random generate radius on logarithmic scale
+    logl = uniform(np.log(lmin), np.log(lmax), n_stat)
+    l = np.exp(logl) # length
+    l2r = uniform(l2rmin, l2rmax, n_stat) # length/radius ratio
+    r = l / l2r # radius
+    #d = l # diagonal
+    d = np.sqrt(np.power(l,2) + np.power(2*r,2)) # diagonal
+    
+    # Generate training dataset
+    print("Simulating test RCS samples for a wire.")
+    for idx in range(L): # loop RCS sample sizes
+        ns = n_rcs[idx] # No. RCS samples per test statistic
+        print("Generating test statistics for RCS samples of length", ns, " ...")
+        for idy in range(n_stat): # loop RCS samples
+            # Generate RCS sample
+            Wire = DebrisObject(radius=r[idy], length=l[idy], objtype='Wire')
+            rcs = Wire.measure(eiscat, ns, sampling_method)
+            # Compute test statistics (feature vector)
+            idz = idy + n_stat * 3
+            regvec[idz,:,idx] = compute_feature_vector(rcs)
+    
+    y[3*n_stat:4*n_stat] = d # regressand vector
+    regdata = {"regressor":regvec, "regressand":y}
+    savemat('regvec4.mat', regdata)
 
 #%%
 
-#
-# Sphere
-#
-
-# Random generate radius and height on logarithmic scale
-logr = uniform(np.log(rmin), np.log(rmax), n_stat)
-r = np.exp(logr) # radius
-d = 2 * r # diagonal
-PEC = DielectricMaterial(1e8,0,1e-8,0) # Perfect electric conductor
-
-# Generate training dataset
-print("Simulating test RCS samples for a sphere.")
-for idx in range(L): # loop RCS sample sizes
-    ns = n_rcs[idx] # No. RCS samples per test statistic
-    print("Generating test statistics for RCS samples of length", ns, " ...")
-    for idy in range(n_stat): # loop RCS samples
-        # Generate RCS sample
-        Sph = DebrisObject(radius=r[idy], material=PEC, objtype='Sphere')
-        rcs = Sph.measure(eiscat, ns, sampling_method)
-        # Compute test statistics (feature vector)
-        idz = idy + n_stat * 4
-        regvec[idz,:,idx] = test_statistics(rcs)
-        if not np.mod(idy,100):
-            print(idx, idy)
-            print(regvec[idz,:,idx])
-
-y[4*n_stat:5*n_stat] = d # regressand vector
+if (generate_data):
+    #
+    # Sphere
+    #
+    
+    # Random generate radius and height on logarithmic scale
+    logr = uniform(np.log(rmin), np.log(rmax), n_stat)
+    r = np.exp(logr) # radius
+    d = 2 * r # diagonal
+    PEC = DielectricMaterial(1e8,0,1e-8,0) # Perfect electric conductor
+    
+    # Generate training dataset
+    print("Simulating test RCS samples for a sphere.")
+    for idx in range(L): # loop RCS sample sizes
+        ns = n_rcs[idx] # No. RCS samples per test statistic
+        print("Generating test statistics for RCS samples of length", ns, " ...")
+        for idy in range(n_stat): # loop RCS samples
+            # Generate RCS sample
+            Sph = DebrisObject(radius=r[idy], material=PEC, objtype='Sphere')
+            rcs = Sph.measure(eiscat, ns, sampling_method)
+            # Compute test statistics (feature vector)
+            idz = idy + n_stat * 4
+            regvec[idz,:,idx] = compute_feature_vector(rcs)
+            if not np.mod(idy,100):
+                print(idx, idy)
+                print(regvec[idz,:,idx])
+                    
+    y[4*n_stat:5*n_stat] = d # regressand vector
 
 #%%
 
@@ -233,7 +232,7 @@ data_generated = True
 # Load saved regression data 
 #
 
-if not data_generated:
+if not generate_data:
     regdata = loadmat('/home/AD.NORCERESEARCH.NO/stia/dev/git/resordan/tests/data/regvec.mat')
     regvec = regdata.get("regressor")
     y = regdata.get("regressand")

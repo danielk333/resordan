@@ -15,7 +15,12 @@ def half_order_moment(data):
     return np.nanmean(np.sqrt(data))
 
 # Compute test statistics (feature vector for regression or clustering)
-def test_statistics(rcs):
+def compute_feature_vector(rcs, # radar cross-section data
+                           nan_ignore=False, # RCS data NaN policy
+                           nan_to_zero=False): # Feature vector NaN policy
+    # Handle NaNs in RCS data
+    if nan_ignore:
+        rcs = [x for x in rcs if not np.isnan(x)]
     
     # Allocate feature vector
     n_features = 9 # number of features
@@ -34,10 +39,16 @@ def test_statistics(rcs):
     fvec[6] = skew(logrcs, bias=False, nan_policy='omit') # log-skewness
     fvec[7] = kurtosis(logrcs, bias=False, nan_policy='omit') # log-kurtosis
     fvec[8] = half_order_moment(rcs) # 1/2-order moment
+    #fvec[8] = half_order_moment(logrcs) # log-1/2-order moment
+    
+    # Handle NaN in feature vector
+    if nan_to_zero:
+        fvec[np.isnan(fvec)] = 0 # Replace NaN values with zeros
+        fvec[fvec<1e-6] = 0 # Replace small values with zeros
     
     return fvec
 
-# Name tags of test statistics
+# Name tags of test statistics / features
 def stat_names():
     
     statnames = ["mean", "variance", "skewness", "kurtosis", 

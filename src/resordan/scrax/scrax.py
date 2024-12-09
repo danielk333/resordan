@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 from pathlib import Path
-from resordan.scrax.features import test_statistics
+from resordan.scrax.features import compute_feature_vector
 
 SNR_PREDICTION_FILENAME = "correlated_snr_prediction.pickle"
 
@@ -9,7 +9,7 @@ SNR_PREDICTION_FILENAME = "correlated_snr_prediction.pickle"
 def size_shape_estimator(rcs_data, model):
     
     # Compute feature vector
-    fvec = test_statistics(rcs_data)
+    fvec = compute_feature_vector(rcs_data)
     fvec[np.isnan(fvec)] = 0 # Replace NaN values with zeros
     fvec[fvec<1e-6] = 0 # Replace small values with zeros
     
@@ -37,11 +37,11 @@ def process_size_shape_estimator(tasks, model):
     (satid, passid, snr_prediction_file)
     """    
     results = []
-    for satid, passid, size_prediction_file in tasks:
-        with open(size_prediction_file, 'rb') as file:
+    for satid, passid, data_file in tasks:
+        with open(data_file, 'rb') as file:
             data = pickle.load(file)
             estimate = size_shape_estimator(data["rcs_data"], model)
-            results.append((satid, passid, size_prediction_file, estimate))
+            results.append((satid, passid, data_file, estimate))
     return results
 
 
