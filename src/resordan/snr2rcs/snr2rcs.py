@@ -118,6 +118,10 @@ def snr2rcs(src, cfg, dst, tmp=None, verbose=False, clobber=False, cleanup=False
     if not dst.exists():
         dst.mkdir(parents=True, exist_ok=True)
     
+    if not tmp:
+        # make temporary directory
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = tmpdir
     tmp = Path(tmp)
     if not tmp.exists():
         tmp.mkdir(parents=True, exist_ok=True)
