@@ -21,6 +21,11 @@ def size_shape_estimator(rcs_data, model):
     
     return {"xSectMaxPred": max_dim}
 
+
+def new_size_shape_estimator(rcs_vector, model):
+    return {"xSectMaxPred": 0.88}
+
+
 def tasks_size_shape_estimator(src):
     """generate estimation tasks for a src product"""
     tasks = []
@@ -71,6 +76,43 @@ def scrax(data_dir, model_file, logger=None):
             pickle.dump(data, file)
 
 
+def new_scrax(rcs_dir, model_file):
+
+    def get_data(pass_dir):
+        pickle_file = pass_dir / SNR_PREDICTION_FILENAME
+        if not pickle_file.is_file():
+            print("pickle file does not exist")
+            return None, None
+        with open(pickle_file, 'rb') as file:
+            data = pickle.load(file)
+            return data['catid'], data['rcs_data']
+
+    # load model
+    model = model_file
+    # with open(model_file, 'rb') as f:
+    #     model = pickle.load(f)
+
+    # generate estimation tasks
+    map = {}
+    for pass_dir in [d for d in Path(rcs_dir).iterdir() if d.is_dir()]:        
+        catid, data = get_data(pass_dir) 
+        if catid is None:
+            continue
+        if catid not in map:
+            map[catid] = {"catid": catid, "passes": [pass_dir], "vector": [data]}
+        else:
+            item = map[catid]
+            item["passes"].append(pass_dir)
+            item["vector"].append(data)
+
+    # process
+    for item in map.values():
+        item["result"] = new_size_shape_estimator(item["vector"], model)
+
+    # store results
+    for item in map.values():
+        print(f"[{item['catid']}] [{len(item['passes'])}] : {item['result']}")
+
 
 
 if __name__ == '__main__':
@@ -81,8 +123,21 @@ if __name__ == '__main__':
     PROJECT = Path("/cluster/projects/p106119-SpaceDebrisRadarCharacterization")
     SOURCE = PROJECT / "rcs/leo_bpark_2.1u_EI-20240822-UHF"
 
-    with importlib.resources.path('resordan.scrax.models', "size_predict_n10.pickle") as MODEL:
-        scrax(str(SOURCE), str(MODEL))
+    NEW_SOURCE = PROJECT / "rcs/leo_mpark_2.1u_EI-20240704-UHF"
 
 
-    
+    MODEL = Path("/cluster/home/inar/Dev/Git/resordan/tests/data/size_predict_n10.pickle")
+
+
+    #with importlib.resources.path('resordan.scrax.models', "size_predict_n10.pickle") as MODEL:
+    #    scrax(str(SOURCE), str(MODEL))
+
+    # scrax(str(SOURCE), str(MODEL))
+
+    new_scrax(str(NEW_SOURCE), str(MODEL))
+
+
+
+
+
+
