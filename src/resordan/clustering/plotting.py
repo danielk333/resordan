@@ -1,5 +1,7 @@
 import numpy as np
 from scipy import constants
+from datetime import datetime, UTC
+import pandas as pd
 
 from resordan.data.gmf import compute_snr
 
@@ -54,9 +56,16 @@ def plot_peaks(axes, data, detected_inds, monostatic=True):
     _not_inds_sty = dict(marker=".", ls="none", color="b")
 
     t = data.t
+    nt = [datetime.fromtimestamp(ti, UTC) for ti in t]
+    t = np.array(nt)
+
     r = _convert(data.range_peak, monostatic=monostatic)
     v = _convert(data.range_rate_peak, monostatic=monostatic)
     a = _convert(data.acceleration_peak, monostatic=monostatic, km=False)
+
+    r = data.range_peak/1e3
+    v = data.range_rate_peak/1e3
+    a = data.acceleration_peak
 
     axes[0, 0].plot(t[not_inds], r[not_inds], **_not_inds_sty)
     axes[0, 0].plot(t[inds], r[inds], **_inds_sty)
@@ -73,11 +82,13 @@ def plot_peaks(axes, data, detected_inds, monostatic=True):
     axes[1, 0].set_xlabel("Time [s]")
     axes[1, 0].set_ylabel("acceleration [m/s/s]")
     axes[1, 0].set_ylim([min_acc, max_acc])
+    axes[1, 0].tick_params(axis='x', labelrotation=45)
 
-    axes[1, 1].plot(t[not_inds], np.sqrt(snr[not_inds]), **_not_inds_sty)
-    axes[1, 1].plot(t[inds], np.sqrt(snr[inds]), **_inds_sty)
+    axes[1, 1].plot(t[not_inds], snrdb[not_inds], **_not_inds_sty)
+    axes[1, 1].plot(t[inds], snrdb[inds], **_inds_sty)
     axes[1, 1].set_xlabel("Time [s]")
-    axes[1, 1].set_ylabel("sqrt(SNR)")
+    axes[1, 1].set_ylabel("SNR [dB]")
+    axes[1, 1].tick_params(axis='x', labelrotation=45)
 
     if optimized:
         r0 = _convert(data.gmf_optimized_peak[:, 0], monostatic=monostatic)
