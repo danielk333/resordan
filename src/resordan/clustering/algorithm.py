@@ -245,6 +245,7 @@ def event_detection(src, **params):
     def results(dirs):
         """run process across dirs and include results if not None"""
         results = []
+        gmf_dataset = []
         for d in dirs:
             res, gmf_dataset = process(d)
             if res is not None:
