@@ -25,9 +25,7 @@ def to_relative_range_gate(ranges, meta):
 
 
 def plot_peaks(axes, data, detected_inds, monostatic=True):
-    r_inds = np.argmax(data.gmf, axis=1)
     coh_inds = np.arange(data.gmf.shape[0])
-
     optimized = data.gmf_optimized_peak is not None
 
     meta = data.meta
@@ -43,6 +41,7 @@ def plot_peaks(axes, data, detected_inds, monostatic=True):
 
     # TODO: use a interpolation of nf-range to determine the SNR of the optimized results
     # snr = compute_snr(data.gmf_optimized, data.nf_range)
+    r_inds = np.argmax(snr, axis=1)
     snr = snr[coh_inds, r_inds]
     snrdb = 10 * np.log10(snr)
 

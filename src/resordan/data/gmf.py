@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 import h5py
 import numpy as np
+from scipy.signal import savgol_filter
 
 from .base import BaseDataset, dataset
 
@@ -157,6 +158,7 @@ def compute_snr(gmf_values, noise_floor, range_gates=None, dB=False):
     Function copied from hardtarget repo.
     """
     if range_gates is None:
+        noise_floor = savgol_filter(noise_floor, 2000, 1, mode='nearest')
         snr = (np.sqrt(gmf_values) - np.sqrt(noise_floor[None, :])) ** 2 / noise_floor[None, :]
     else:
         inds = np.logical_and(range_gates >= 0, range_gates < len(noise_floor))
@@ -221,9 +223,9 @@ def load_gmf(
 
     # Compute SNR
     if "gmf" in data:
-        r_inds = np.argmax(data["gmf"], axis=1)
         coh_inds = np.arange(data["gmf"].shape[0])
         snr = compute_snr(data["gmf"], data["nf_range"])
+        r_inds = np.argmax(snr, axis=1)
         snr = snr[coh_inds, r_inds]
         data["snr"] = 10 * np.log10(snr)
     else:
