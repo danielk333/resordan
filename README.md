@@ -2,7 +2,6 @@
 
 REsident Space Object RAdar Data ANalysis
 
-
 # Install
 
 ## Pre requirements
