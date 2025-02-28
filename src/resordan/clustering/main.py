@@ -33,28 +33,29 @@ def main(input_args=None):
     if args.loss_threshold is not None: detector_params['loss_threshold'] = args.loss_threshold
     if args.min_n_samples is not None: detector_params['min_n_samples'] = args.min_n_samples
 
-    # Perform cluster detection. The selection parameters can be modified
-    if not detector_params:
-        events_dataset, gmf_dataset = algorithm.event_detection(Path(args.src))
-    else:
-        print(detector_params)
-        events_dataset, gmf_dataset = algorithm.event_detection(Path(args.src),**detector_params)
-
-    if args.verbose:
-        print(events_dataset)
-
-    # write detections
     if Path(args.output).exists():
         print (f"File {args.output} already exists")
     else:
+        # Perform cluster detection. The selection parameters can be modified
+        if not detector_params:
+            events_dataset, gmf_dataset = algorithm.event_detection(Path(args.src))
+        else:
+            print(detector_params)
+            events_dataset, gmf_dataset = algorithm.event_detection(Path(args.src),**detector_params)
+
+        if args.verbose:
+            print(events_dataset)
+
+        # write detections
         EventsDataset.to_pickle(events_dataset, args.output)
 
-    if events_dataset.events:
-        if args.plot:
-            detected_inds = np.concatenate([e.idx for e in events_dataset.events])
-            fig, ax = plt.subplots(2, 2, figsize=(10, 10), sharex="all")
-            plotting.plot_peaks(axes=ax, data=gmf_dataset, detected_inds=detected_inds)
-            plt.show()
+        if events_dataset.events:
+            if args.plot:
+                # The plot is intended to be use for 1hr files
+                detected_inds = np.concatenate([e.idx for e in events_dataset.events])
+                fig, ax = plt.subplots(2, 2, figsize=(10, 10), sharex="all")
+                plotting.plot_peaks(axes=ax, data=gmf_dataset, detected_inds=detected_inds)
+                plt.show()
 
 
 if __name__ == '__main__':
