@@ -1,6 +1,7 @@
 import logging
 from dataclasses import asdict, dataclass
 import numpy as np
+from scipy import stats
 from resordan.data.events import EventDataset, EventsDataset
 from resordan.data.gmf import GMFDataset
 
