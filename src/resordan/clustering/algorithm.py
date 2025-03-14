@@ -145,69 +145,67 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
 
     # Split detection candidates into windows
     times = gmf_dataset.t[inds]
-    time_deltas = times[1:] - times[:-1]
-    window_starts = np.where(time_deltas > cfg.segment_split_time)[0] + 1
-    windows = np.split(inds, window_starts)
+    time_delta = times[1:] - times[:-1]
+    window_start = np.where(time_delta > cfg.segment_split_time)[0] + 1
+    windows = np.split(inds, window_start)
+
+    # set the segment_split_time to half its value
+    split_time = 0.5*cfg.segment_split_time/(stats.mode(time_delta))[0]
 
     # Run detection in each window
     events = []
     event_number = 0
     for window_inds in windows:
-        rr=gmf_dataset.range_peak[window_inds]
-        range_deltas = rr[1:] - rr[:-1]
-        # Finding if there are different range in the detections
-        window_rr = np.where(np.abs(range_deltas) > 2000)[0] + 1
+        if (len(window_inds) < cfg.min_n_samples):
+            continue
+
+        r_round=np.round(gmf_dataset.range_peak[window_inds]/1e3)
+        r_delta = r_round[1:] - r_round[:-1]
+        r_window = len(np.where(np.abs(r_delta) > 3)[0] + 1)
 
         # When there are several ranges
-        if len(window_rr) >= 1:
-            ss = np.round(gmf_dataset.range_peak[window_inds]/1e3)
-            hist, bin_edges = np.histogram(ss, bins = int((np.max(ss)-np.min(ss))/3))
-            idxh = np.argwhere(hist>2)
-            histmean = np.mean([bin_edges[idxh],bin_edges[idxh+1]], axis = 0)
-            histdif = np.abs(gmf_dataset.range_peak[window_inds] - histmean*1e3)
+        if r_window >= 1:
+            bin_range = np.arange(np.nanmin(r_round),np.nanmax(r_round)+2)
+            hist, r_edge = np.histogram(r_round, bins=bin_range)
+            idxh = np.argwhere(hist>1)
+            idx_delta = idxh[1:] - idxh[:-1]
+            idx_win = np.where(np.abs(idx_delta) > 3)[0] + 1
+            idx_win = np.split(idxh, idx_win)
 
-            # confirming the timing of the detection is in sequence
-            medianv = [np.median(np.where(histdif[ii,:] < 2000)) for ii in range(len(histdif[:,0]))]
+            to_sortime = []
+            to_idx = []
+            for idxw in idx_win:
+                if len(idx_win[0]) == 0:
+                    continue
+                new_r_win = gmf_dataset.range_peak[window_inds]
+                min_range = (np.nanmin(r_edge[idxw]) - 2)*1e3
+                max_range = (np.nanmax(r_edge[idxw]) + 2)*1e3
+                select_r = np.where((new_r_win >= min_range) & (new_r_win <= max_range))[0]
+                select_r_dif = select_r[1:] - select_r[:-1]
+                select_win = np.where(np.abs(select_r_dif) > split_time)[0] + 1
+                select_win = np.split(select_r, select_win)
+                for select_windown in select_win:
+                    if len(select_windown) < 3:
+                        continue
 
-            # checking the time in the subdetections. Time separation not greather than the given time
-            for ii in np.argsort(medianv):
-                idxr = np.where(histdif[ii,:] < 2000)
-                tt_idxr = gmf_dataset.t[window_inds[idxr]]
-                diff_tt = tt_idxr[1:] - tt_idxr[:-1]
-                window_tt = np.where(diff_tt > cfg.segment_split_time)[0] + 1
+                    ridx = np.argmax(gmf_dataset.snr[select_windown])
+                    to_sortime.append(gmf_dataset.t[select_windown[ridx]])
+                    to_idx.append(window_inds[select_windown])
 
-                if len(window_tt) == 0:
-                    detected = run_detection(gmf_dataset, window_inds[idxr], cfg)
+            to_sortime = np.argsort(to_sortime)
 
-                    if detected:
-                        print('A',event_number)
-                        events.append(
-                            _create_event_dataset_for_detection(gmf_dataset, window_inds[idxr], event_number)
-                        )
-                        event_number += 1
-                else:
-                    subwindows = np.split(window_inds[idxr], window_tt)
-
-                    for sub_windows in subwindows:
-                        detected = run_detection(gmf_dataset, sub_windows, cfg)
-
-                        if detected:
-                            print('B',event_number)
-                            events.append(
-                                _create_event_dataset_for_detection(gmf_dataset, sub_windows, event_number)
-                            )
-                            event_number += 1
-    
+            for idxs in to_sortime:
+                detected = run_detection(gmf_dataset, to_idx[idxs], cfg)
+                if detected:
+                    events.append(
+                        _create_event_dataset_for_detection(gmf_dataset, to_idx[idxs], event_number)
+                    )
+                    event_number += 1
+                            
         # When there is a single range
         else:
             detected = run_detection(gmf_dataset, window_inds, cfg)
-        
             if detected:
-                print('C',event_number)
-                # Ensure that window indices are linearly increasing.
-                # This ensures constant sampling period in the time series of the detected event.
-                window_inds = np.arange(window_inds[0], window_inds[-1] + 1)
-                # Create EventDataset for detected event.
                 events.append(
                     _create_event_dataset_for_detection(gmf_dataset, window_inds, event_number)
                 )

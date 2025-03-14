@@ -36,6 +36,7 @@ CLUSTER_PARAM_DEFAULTS = dict(
     segment_split_time=1.5,
     snr_db_threshold=20,
     loss_threshold=10,
+    min_n_samples=5,
 )
 
 CORRELATE_PARAM_DEFAULTS = dict(
