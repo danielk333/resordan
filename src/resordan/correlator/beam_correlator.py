@@ -522,6 +522,8 @@ def radar_sd_correlator(
     s_r = rangescaling
 
     radar = getattr(sorts.radars, radarid)
+    for station in radar.rx + radar.tx:
+        station.min_elevation = 0
 
     tle_pth = pathlib.Path(catalog).resolve()
     output_pth = pathlib.Path(output).resolve()
