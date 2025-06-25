@@ -159,58 +159,74 @@ def snr_peaks_detection(gmf_dataset: GMFDataset, **kwargs) -> EventsDataset:
     for window_inds in windows:
         if (len(window_inds) < cfg.min_n_samples):
             continue
+        
+        detected = run_detection(gmf_dataset, window_inds, cfg)
+        if detected:
+            events.append(
+                _create_event_dataset_for_detection(gmf_dataset, window_inds, event_number)
+                )
+            event_number += 1
+        
+        else:
+            r_round=np.round(gmf_dataset.range_peak[window_inds]/1e3)
+            r_delta = r_round[1:] - r_round[:-1]
+            r_window = len(np.where(np.abs(r_delta) > 3)[0] + 1) # change
 
-        r_round=np.round(gmf_dataset.range_peak[window_inds]/1e3)
-        r_delta = r_round[1:] - r_round[:-1]
-        r_window = len(np.where(np.abs(r_delta) > 3)[0] + 1)
+            # When there are several ranges
+            if r_window >= 1:
+                bin_range = np.arange(np.nanmin(r_round),np.nanmax(r_round)+2)
+                hist, r_edge = np.histogram(r_round, bins=bin_range)
+                idxh = np.where(hist>1)[0]
 
-        # When there are several ranges
-        if r_window >= 1:
-            bin_range = np.arange(np.nanmin(r_round),np.nanmax(r_round)+2)
-            hist, r_edge = np.histogram(r_round, bins=bin_range)
-            idxh = np.argwhere(hist>1)
-            idx_delta = idxh[1:] - idxh[:-1]
-            idx_win = np.where(np.abs(idx_delta) > 3)[0] + 1
-            idx_win = np.split(idxh, idx_win)
+                if len(idxh) == 0:
+                    pass
+                else:
+                    idx_delta = idxh[1:] - idxh[:-1]
+                    idx_win = np.where(np.abs(idx_delta) > 3)[0] + 1 # change
+                    idx_win = np.split(idxh, idx_win)
 
-            to_sortime = []
-            to_idx = []
-            for idxw in idx_win:
-                if len(idx_win[0]) == 0:
-                    continue
-                new_r_win = gmf_dataset.range_peak[window_inds]
-                min_range = (np.nanmin(r_edge[idxw]) - 2)*1e3
-                max_range = (np.nanmax(r_edge[idxw]) + 2)*1e3
-                select_r = np.where((new_r_win >= min_range) & (new_r_win <= max_range))[0]
-                select_r_dif = select_r[1:] - select_r[:-1]
-                select_win = np.where(np.abs(select_r_dif) > split_time)[0] + 1
-                select_win = np.split(select_r, select_win)
-                for select_windown in select_win:
-                    if len(select_windown) < 3:
-                        continue
+                    to_sortime = []
+                    to_idx = []
+                    for idxw in idx_win:
+                        if r_edge[idxw[0]] < 350:
+                            continue
+                        if len(idx_win[0]) == 0:
+                            continue
+                        
+                        new_r_win = gmf_dataset.range_peak[window_inds]
+                        min_range = (np.nanmin(r_edge[idxw]) - 2)*1e3
+                        max_range = (np.nanmax(r_edge[idxw]) + 2)*1e3
+                        select_r = np.where((new_r_win >= min_range) & (new_r_win <= max_range))[0]
+                        select_r_dif = select_r[1:] - select_r[:-1]
+                        select_win = np.where(np.abs(select_r_dif) > split_time)[0] + 1
+                        select_win = np.split(select_r, select_win)
 
-                    ridx = np.argmax(gmf_dataset.snr[select_windown])
-                    to_sortime.append(gmf_dataset.t[select_windown[ridx]])
-                    to_idx.append(window_inds[select_windown])
+                        for select_windown in select_win:
+                            if len(select_windown) < 3:
+                                continue
 
-            to_sortime = np.argsort(to_sortime)
+                            ridx = np.argmax(gmf_dataset.snr[select_windown])
+                            to_sortime.append(gmf_dataset.t[select_windown[ridx]])
+                            to_idx.append(window_inds[select_windown])
 
-            for idxs in to_sortime:
-                detected = run_detection(gmf_dataset, to_idx[idxs], cfg)
+                    to_sortime = np.argsort(to_sortime)
+
+                    for idxs in to_sortime:
+                        detected = run_detection(gmf_dataset, to_idx[idxs], cfg)
+                        if detected:
+                            events.append(
+                                _create_event_dataset_for_detection(gmf_dataset, to_idx[idxs], event_number)
+                            )
+                            event_number += 1
+                
+            # When there is a single range
+            else:
+                detected = run_detection(gmf_dataset, window_inds, cfg)
                 if detected:
                     events.append(
-                        _create_event_dataset_for_detection(gmf_dataset, to_idx[idxs], event_number)
+                        _create_event_dataset_for_detection(gmf_dataset, window_inds, event_number)
                     )
                     event_number += 1
-                            
-        # When there is a single range
-        else:
-            detected = run_detection(gmf_dataset, window_inds, cfg)
-            if detected:
-                events.append(
-                    _create_event_dataset_for_detection(gmf_dataset, window_inds, event_number)
-                )
-                event_number += 1
 
     logger.info(f"Detected {len(events)} targets.")
     return EventsDataset(meta=gmf_dataset.meta, detector_config=asdict(cfg), events=events)
