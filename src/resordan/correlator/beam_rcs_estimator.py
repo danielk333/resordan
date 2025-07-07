@@ -1,24 +1,25 @@
 #!/usr/bin/env python
 
-from pathlib import Path
-import pickle
 import argparse
-import scipy
-import similaritymeasures
-import subprocess
+import datetime as dt
+from datetime import datetime, UTC, timedelta
+from pathlib import Path, PurePath
 
 import numpy as np
+import subprocess
+import pickle
+import scipy
+import h5py
+import similaritymeasures
 import matplotlib.pyplot as plt
 from astropy.time import Time
 from tqdm import tqdm
-import datetime as dt
-
-import h5py
 
 import sorts
 import pyant
 import resordan.correlator.update_tle as utle
 from resordan.correlator.discos_cat import get_discos_objects
+
 
 try:
     from mpi4py import MPI
@@ -184,11 +185,16 @@ def snr2rcs(
     Use the radar equation to compute RCS values from SNR data
     """
 
+    # Receiver noise power
     rx_noise = scipy.constants.k*rx_noise_temp*bandwidth
+
+    # Received signal power (in Watts)
     power = snr*rx_noise/radar_albedo
 
+    # Radar cross-section calculation (from radar equation)
     rcs_dividend = 64.0 * (np.pi**3.0) * (range_rx_m**2.0*range_tx_m**2.0) * power
     rcs_divisor = power_tx*(gain_tx*gain_rx)*(wavelength**2.0)
+
     return rcs_dividend / rcs_divisor
 
 
@@ -299,11 +305,16 @@ def plot_estimator_results(
         fileformat, 
         results_folder):
     """
-    Plot parameters that resulted from RCS_ESTIMATOR
+    save plot of parameters that resulted from RCS_ESTIMATOR
     """
 
+    # Ensure results_folder exists
+    results_folder.mkdir(parents=True, exist_ok=True)
+
+    # Convert SNR to linear scale
     alog = 10**(data.snr/10)
 
+    # Plot gain heatmap with object path
     fig, ax = plt.subplots(figsize=(12, 8))
     ax.plot(pth[0, :], pth[1, :], '-w')
     pyant.plotting.gain_heatmap(radar.tx[0].beam, min_elevation=85.0, ax=ax)
@@ -311,32 +322,38 @@ def plot_estimator_results(
     plt.close(fig)
 
     fig, axes = plt.subplots(2, 2, figsize=(16, 8))
+    # Plot jitter vs match error
     axes[0, 0].plot(t_jitter, matches, '.k')
     axes[0, 0].plot(t_jitter, pmae, 'k')
     if bmae == bmae:
         axes[0, 0].plot(t_jitter[bmae], pmae[bmae], 'or')
     axes[0, 0].set_xlabel('Jitter [s]')
     axes[0, 0].set_ylabel('Distance [1]')
+    # Plot diameter
     axes[0, 1].plot(data.t, np.log10(diam*1e2))
     axes[0, 1].set_ylabel('Diameter [log10(cm)]')
-    interval = 0.2
     d_peak = diam[snridmax]*1e2
     if not (np.isnan(d_peak) or np.isinf(d_peak)):
+        interval = 0.2
         logd_peak = np.log10(d_peak)
         axes[0, 1].set_ylim(logd_peak*(1 - interval), logd_peak*(1 + interval))
+    # Plot range (measured vs model)
     axes[1, 0].plot(data.t, np.linalg.norm(ecef_r, axis=0)/1e3)
     axes[1, 0].plot(data.t, data.range/1e3)
     axes[1, 0].plot(data.t[snridmax], r/1e3, 'or')
     axes[1, 0].set_ylabel('range [km]')
     axes[1, 0].set_xlabel('Time [s]')
+    # Plot range (SNR vs model)
     axes[1, 1].plot(data.t, 10*np.log10(SNR_sim/np.max(SNR_sim)), label='Estimated')
     axes[1, 1].plot(data.t, 10*np.log10(alog/np.nanmax(alog)), 'x', label='Measured')
     axes[1, 1].plot(data.t, 10*np.log10(SNR_sim/np.max(SNR_sim)), '+b')
-    axes[1, 1].legend()
     axes[1, 1].set_xlabel('Time [s]')
     axes[1, 1].set_ylabel('Normalized SNR [dB]')
-    title_date = results_folder.stem.split('_')
+    axes[1, 1].legend()
+
     axes[0, 1].sharex(axes[1, 1])
+    
+    title_date = results_folder.stem.split('_')
     mdate = Time(data.epoch, format='unix', scale='utc').iso
     fig.suptitle(f'{title_date[0].upper()} - {mdate}: NORAD-ID = {norad}')
     fig.savefig(results_folder / f'correlated_pass_snr_match.{fileformat}')
@@ -358,13 +375,16 @@ def save_estimator_results(
         ecef_r,
         results_folder):
     """
-    Save measured and simulated time series for each object with 
-    their respective geometries and shapres retrieved from DISCOS
+    Save measured and simulated time series for a tracked object,
+    including geometry and shape info from DISCOS
     """
 
     # discos object
-    _catid = norad
-    discos_tup = discos_map[_catid]
+    try:
+        discos_tup = discos_map[norad]
+    except KeyError:
+        raise ValueError(f"NORAD ID {norad} not found in discos_map")
+    
     (
         nameo, satno, oClass, mission, mass, 
         shape, width, height, depth, diam, 
@@ -402,9 +422,146 @@ def save_estimator_results(
                 xSectAvg = xsAvg,
     )
 
+    results_file = results_folder / 'correlated_snr_prediction.pickle'
+    results_file.parent.mkdir(parents=True, exist_ok=True)  # Ensure folder exists
 
-    with open(results_folder / 'correlated_snr_prediction.pickle', 'wb') as fh:
+    with open(results_file, 'wb') as fh:
         pickle.dump(summary_data, fh)
+
+
+def save_table_selected(
+        metadata,
+        discos_map, 
+        norad, 
+        rcs_data, 
+        data,
+        offset_angle,
+        az,
+        ele,
+        results_folder
+        ):
+    """
+    Save summary table based on resordan results. This is used for ESA PROOF 2009.
+    """
+    
+    event_num = str(data.event_number)
+    radar_type = str(metadata.experiment['tx_channel'])
+    radar_freq = str(metadata.experiment['radar_frequency'])
+    descriptive_header = str(PurePath(results_folder).name)
+    az = str(az)
+    ele = str(ele)
+
+    idx_snr = np.nanargmax(data.snr)
+    max_snr = str(round(data.snr[idx_snr], 3))
+    max_t = datetime.fromtimestamp(data.epoch, UTC) + timedelta(seconds = data.t[idx_snr])
+    max_t = max_t.strftime('%Y-%m-%d %H:%M:%S.%f')
+    max_r = str(round(data.range[idx_snr], 3)) # m
+    max_rr = str(round(data.range_rate[idx_snr], 3)) # m/s
+    max_a = str(round(data.acceleration[idx_snr], 3)) # m/s2
+
+    if norad == '00000':
+        catid = '00000'
+        max_oa = '0' # deg 
+        max_rcs = '0'
+        idx_oa = '0'
+        min_snr = '0'
+        min_t = '0'
+        min_t = '0'
+        min_r = '0'
+        min_rr = '0'
+        min_a = '0'
+        min_oa = '0'
+        nameo = '0'
+        objectClass = '0'
+        mass = '0' # kg
+        span = '0' # m
+
+    else:
+        # Retrieve object data: DISCOS
+        discos_object = discos_map[norad]
+        (
+            nameo, satno, oClass, mission, mass, 
+            shape, width, height, depth, diam, 
+            span, xsMax, xsMin, xsAvg
+        ) = discos_object
+
+        # Max SNR index and related data
+        
+        max_oa = str(round(offset_angle[idx_snr], 3)) # deg
+        max_rcs = str(round(rcs_data[idx_snr], 3))
+        idx_oa = np.nanargmin(offset_angle)
+        min_snr = str(round(data.snr[idx_oa], 3))
+        min_t = datetime.fromtimestamp(data.epoch, UTC) + timedelta(seconds = data.t[idx_oa])
+        min_t = min_t.strftime('%Y-%m-%d %H:%M:%S.%f')
+        min_r = str(round(data.range[idx_oa], 3))
+        min_rr = str(round(data.range_rate[idx_oa], 3))
+        min_a = str(round(data.acceleration[idx_oa], 3))
+        min_oa = str(round(offset_angle[idx_oa], 3))
+
+        catid = str(satno)
+        nameo = str(nameo).replace(" ", "_")
+        objectClass = str(oClass).replace(" ", "_")
+        mass = str(mass) # kg
+        span = str(span) # m
+        #flag for multiple detection
+
+    # Compose single line of output datas
+    listing = '     '.join(map(str, [
+        event_num, radar_type, radar_freq, descriptive_header, az, ele, catid,
+        max_snr, max_t, max_r, max_rr, max_a, max_oa, max_rcs,
+        min_snr, min_t, min_r, min_rr, min_a, min_oa,
+        nameo, objectClass, mass, span
+    ]))
+
+    table_file = Path(results_folder) / f"EISCAT_RCS_{descriptive_header}.txt"
+
+    if not table_file.exists():
+        header_tab = (
+            "%EN     Type   Freq                    Exp                     AZ     EL     SATID        "
+            "SNR                   TM                         R       RR           A            OA     RCS    "
+            "SNRa                  TMa                        Ra      RRa     Aa      OAa    "
+            "ON              OC         Mass   Span"
+        )
+        now = datetime.now()
+        header_list = f"""%Version 1.0
+%
+%EN   Event number
+%Type  Radar type
+%Freq  Radar freq [MHz]
+%Exp   Descritive header
+%AZ    Azimuth [deg]
+%EL    Elevation [deg]
+%SATID Satellite ID
+%SNR   Maximum SNR [dB]
+%TM    Time of max SNR [UTC]
+%R     Range at the max SNR [m]
+%RR    Range-rate at the max SNR [m/s]
+%A     Acceleration at max SNR [m/s2]
+%OA    Offset angle at max SNR [deg]
+%RCS   RCS at max SNR
+%SNRa  SNR at min offset angle [dB]
+%TMa   Time at min offset angle [UTC]
+%Ra    Range at min offset angle [m]
+%RRa   Range-rate at min offset angle [m/s]
+%Aa    Acceleration at min offset angle [m/s2]
+%OAa   Offset angle at min offset angle [deg]
+%ON    Object Name
+%OC    Object Class
+%Mass  Mass [kg]
+%Span  Span [m]
+%
+%Date created: {now.strftime("%Y-%m-%d %H:%M:%S")}
+%
+{'&' + '-'*len(header_tab)}
+{header_tab}
+{'&' + '-'*len(header_tab)}
+"""
+        with open(table_file, "w") as f:
+            f.write(header_list)
+        
+    # Append data
+    with open(table_file, "a") as f:
+        f.write(listing + '\n')
 
 
 ###################################################################
@@ -424,19 +581,20 @@ def rcs_estimator(
         fileformat='png',
         verbose=False):
     """
-    Compute Radar Cross Section and estinate SNR and diameter from measured SNR 
+    Estimate Radar Cross Section (RCS), Signal-to-Noise Ratio (SNR), and diameter
+    from measured detections using correlations and TLE catalogs.
 
     Params
     ------
 
     radarid: (str)
-        identifier for radarsystem 
+        Identifier for the radar system (from `sorts.radars`)
     catalog: (str)
-        path to TLE file
+        Path to the TLE catalog file.
     correlation_events: (str)
-        path to directory with pickled detection files
+        Directory containing pickled detection event files.
     correlation_data: (str)
-        path to directory with correlations
+        Directory containing .h5 correlation results.
     token: (str)
         access token for Discos service
     output: (str)
@@ -452,7 +610,7 @@ def rcs_estimator(
         0.1, 
         dtype=np.float64,
     )
-
+    
     output_pth = Path(output).resolve()
     output_pth.mkdir(exist_ok=True, parents=True)
     path2correvents = Path(correlation_events).resolve()
@@ -467,8 +625,8 @@ def rcs_estimator(
     for corr_event in corr_events:
         corrdata_filename = corr_event.name.split('.')[0] + '.h5'
         if verbose:
-            print(path2corrdata / corrdata_filename)
-            print(corr_event)
+            print("Correlation data:", path2corrdata / corrdata_filename)
+            print("Event file:", corr_event)
 
         with h5py.File(path2corrdata / corrdata_filename, 'r') as ds:
             indecies = ds['matched_object_index'][()][0, :]
@@ -515,6 +673,7 @@ def rcs_estimator(
             desc='Predicting events',
         )
 
+        metadata = h_det.meta
         for jj, events in enumerate(h_det.events):
             if selected[jj]:
                 data = events
@@ -553,18 +712,19 @@ def rcs_estimator(
                     radar.tx[0].beam.sph_point(azimuth = az, elevation = ele)
 
                     # ==================
-                    # TLE update # The update does not produce simulations
+                    # TLE update
+                    # The update makes sense when an accurate beam pattern
+                    # of the antenna is used
                     # ==================
-                    # line1 = pop.data[np.where(pop.data['oid'] == norad)]['line1']
-                    # line2 = pop.data[np.where(pop.data['oid'] == norad)]['line2']
-                    # print(line1)
-                    # print(line2)
-                    # new_tle = updated_tle(line1,line2,data,radarid) # corr_event or data
-                    # print(new_tle)
-                    # new_pop = sorts.population.tle_catalog(
-                    #     [(new_tle[0],new_tle[1])], cartesian=False
-                    # )
-                    # obj = new_pop.get_object(0)
+                    #line1 = pop.data[np.where(pop.data['oid'] == norad)]['line1']
+                    #line2 = pop.data[np.where(pop.data['oid'] == norad)]['line2']
+
+                    #new_tle = updated_tle(line1,line2,data,radarid) # corr_event or data
+
+                    #new_pop = sorts.population.tle_catalog(
+                    #    [(new_tle[0],new_tle[1])], cartesian=False
+                    #)
+                    #obj = new_pop.get_object(0)
                     # ==================
 
                     obj.out_frame = 'ITRS'
@@ -612,6 +772,10 @@ def rcs_estimator(
                                         degrees=True
                             )
                             offset_angle_array.append(offset_angle[0])
+                        
+                        save_table_selected(metadata, discos_map, norad,
+                            rcs_data, data, offset_angle_array, az, ele, output_pth
+                        )
 
                         plot_estimator_results(
                             data, norad, radar, t_jitter, matches,
@@ -626,6 +790,27 @@ def rcs_estimator(
 
                 else:
                     print('At the time of the TLE (date), the object was to be assigned')
+
+            else:
+                NoVar = []
+                norad = '00000'
+                data = events
+
+                az = events.pointing[0][0]  # assuming that all values are the same
+                ele = events.pointing[0][1]
+
+                save_table_selected(
+                    metadata,
+                    NoVar,
+                    norad,
+                    NoVar,
+                    data,
+                    NoVar,
+                    az,
+                    ele,
+                    output_pth
+                )
+
             pbar.update(1)
         pbar.close()
 
