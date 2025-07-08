@@ -33,9 +33,9 @@ def get_value(config, section, option):
 
 CLUSTER_PARAM_DEFAULTS = dict(
     loss_weights=(1e-3, 1e-3),
-    segment_split_time=1.5,
+    segment_split_time=2,
     snr_db_threshold=20,
-    loss_threshold=10,
+    loss_threshold=20,
     min_n_samples=5,
 )
 
