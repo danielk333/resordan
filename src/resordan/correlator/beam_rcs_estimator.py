@@ -2,7 +2,7 @@
 
 import argparse
 import datetime as dt
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path, PurePath
 
 import numpy as np
@@ -453,7 +453,7 @@ def save_table_selected(
 
     idx_snr = np.nanargmax(data.snr)
     max_snr = str(round(data.snr[idx_snr], 3))
-    max_t = datetime.fromtimestamp(data.epoch, UTC) + timedelta(seconds = data.t[idx_snr])
+    max_t = datetime.fromtimestamp(data.epoch, dt.timezone.utc) + timedelta(seconds = data.t[idx_snr])
     max_t = max_t.strftime('%Y-%m-%d %H:%M:%S.%f')
     max_r = str(round(data.range[idx_snr], 3)) # m
     max_rr = str(round(data.range_rate[idx_snr], 3)) # m/s
@@ -491,7 +491,7 @@ def save_table_selected(
         max_rcs = str(round(rcs_data[idx_snr], 3))
         idx_oa = np.nanargmin(offset_angle)
         min_snr = str(round(data.snr[idx_oa], 3))
-        min_t = datetime.fromtimestamp(data.epoch, UTC) + timedelta(seconds = data.t[idx_oa])
+        min_t = datetime.fromtimestamp(data.epoch, dt.timezone.utc) + timedelta(seconds = data.t[idx_oa])
         min_t = min_t.strftime('%Y-%m-%d %H:%M:%S.%f')
         min_r = str(round(data.range[idx_oa], 3))
         min_rr = str(round(data.range_rate[idx_oa], 3))
