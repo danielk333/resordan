@@ -370,8 +370,6 @@ def save_estimator_results(
         rcs_data, 
         data,
         offset_angle,
-        az,
-        ele,
         ecef_r,
         results_folder):
     """
@@ -400,7 +398,7 @@ def save_estimator_results(
                 # measurement_id = meas_id,
                 # object_id = obj_id,
                 offset_angle = offset_angle,
-                pointing = [az, ele],
+                pointing = [data.pointing[0][0], data.pointing[0][1]],
                 catid = satno,
                 rcs_data = rcs_data,
                 snr_data = data.snr,
@@ -429,15 +427,13 @@ def save_estimator_results(
         pickle.dump(summary_data, fh)
 
 
-def save_table_selected(
+def create_summary_table(
         metadata,
         discos_map, 
         norad, 
         rcs_data, 
         data,
         offset_angle,
-        az,
-        ele,
         results_folder
         ):
     """
@@ -448,8 +444,8 @@ def save_table_selected(
     radar_type = str(metadata.experiment['tx_channel'])
     radar_freq = str(metadata.experiment['radar_frequency'])
     descriptive_header = str(PurePath(results_folder).name)
-    az = str(az)
-    ele = str(ele)
+    az = str(data.pointing[0][0])
+    ele = str(data.pointing[0][1])
 
     idx_snr = np.nanargmax(data.snr)
     max_snr = str(round(data.snr[idx_snr], 3))
@@ -552,9 +548,9 @@ def save_table_selected(
 %
 %Date created: {now.strftime("%Y-%m-%d %H:%M:%S")}
 %
-{'&' + '-'*len(header_tab)}
+{'%' + '-'*len(header_tab)}
 {header_tab}
-{'&' + '-'*len(header_tab)}
+{'%' + '-'*len(header_tab)}
 """
         with open(table_file, "w") as f:
             f.write(header_list)
@@ -773,8 +769,8 @@ def rcs_estimator(
                             )
                             offset_angle_array.append(offset_angle[0])
                         
-                        save_table_selected(metadata, discos_map, norad,
-                            rcs_data, data, offset_angle_array, az, ele, output_pth
+                        create_summary_table(metadata, discos_map, norad,
+                            rcs_data, data, offset_angle_array, output_pth,
                         )
 
                         plot_estimator_results(
@@ -785,7 +781,7 @@ def rcs_estimator(
 
                         save_estimator_results(
                             discos_map, norad, SNR_sim, diam, G_pth, pth, 
-                            rcs_data, data, offset_angle_array, az, ele, ecef_r, results_folder
+                            rcs_data, data, offset_angle_array, ecef_r, results_folder
                         )
 
                 else:
@@ -799,15 +795,13 @@ def rcs_estimator(
                 az = events.pointing[0][0]  # assuming that all values are the same
                 ele = events.pointing[0][1]
 
-                save_table_selected(
+                create_summary_table(
                     metadata,
                     NoVar,
                     norad,
                     NoVar,
                     data,
                     NoVar,
-                    az,
-                    ele,
                     output_pth
                 )
 
